@@ -1,159 +1,203 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Search, Command, Paperclip, ArrowUp } from 'lucide-react';
-import { MorningBriefing } from '@/components/dashboard/MorningBriefing';
-import { ChatInterface } from '@/components/chat/ChatInterface'; // Removed 'Message' import as it's now internal
-import { useSession } from '@/components/context/SessionContext'; // <--- THE SHARED BRAIN
+import React, { useState } from 'react';
+import { useSession } from '@/components/providers/SessionContext';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
-export default function Dashboard() {
-  // 1. DELETE LOCAL STATE, USE GLOBAL STATE
-  const { viewState, setViewState, messages, addMessage, isLoading } = useSession();
-  
+import { Sidebar } from '@/components/layout/Sidebar';
+import { ChatInterface } from '@/app/(features)/brain/components/ChatInterface';
+import { WeatherCard, TimeCard } from '@/app/(features)/inbox/components/DailyBriefing';
+import { DailyBriefingClient } from '@/app/(features)/inbox/components/DailyBriefingClient';
+import { ArthurInput } from '@/app/(features)/brain/components/ArthurInput';
+import { AIStatus } from '@/app/(features)/brain/components/AIStatus';
+import { FinancialUpdates } from '@/app/(features)/finance/components/FinancialUpdates';
+import { EventStatus } from '@/app/(features)/events/components/EventStatus';
+
+const MORPH_TRANSITION = {
+  type: 'spring',
+  stiffness: 280,
+  damping: 30,
+  mass: 1,
+};
+
+const PANEL_BASE = 'relative rounded-[32px] overflow-hidden backdrop-blur-2xl border border-white/50 shadow-sm';
+
+export default function Home() {
+  const { viewState, setViewState, isLoading } = useSession();
   const [input, setInput] = useState('');
-  
-  // High-End Fluid Physics
-  const fluidTransition = { 
-    type: "spring", 
-    stiffness: 250, 
-    damping: 40, 
-    mass: 1.2 
-  };
 
-  // 2. Updated Handler using Global Brain
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    // Switch to Chat Mode
-    setViewState('chat');
-    
-    // Add to Global Memory
-    addMessage('user', input);
-    
-    setInput('');
-    
-    // Note: The actual AI response should come from your n8n backend later.
-    // For now, this fallback logic is handled in ChatInterface or removed if n8n handles it.
-  };
+  const toggleView = () => setViewState(viewState === 'overview' ? 'chat' : 'overview');
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value);
 
   return (
-    <div className="h-screen w-full bg-[#050505] text-stone-400 overflow-hidden flex font-sans selection:bg-[#d4c4a8] selection:text-[#0a0a0a]">
-      
-      {/* SIDEBAR */}
-      <aside className="w-16 h-full border-r border-white/5 bg-[#080808] flex flex-col items-center py-6 z-[60]">
-        <div className="mb-8 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-          <div className="w-2 h-2 bg-[#d4c4a8] rounded-full shadow-[0_0_10px_rgba(212,196,168,0.5)]" />
-        </div>
-        <nav className="flex flex-col gap-6 w-full items-center">
-          <button className="p-3 text-stone-500 hover:text-white transition-colors"><Menu size={20} /></button>
-          <button 
-            onClick={() => setViewState(viewState === 'overview' ? 'chat' : 'overview')}
-            className={`p-3 rounded-xl transition-all ${viewState === 'chat' ? 'bg-white/10 text-white' : 'text-stone-500 hover:text-white'}`}
-          >
-            <Command size={20} />
-          </button>
-        </nav>
-        <div className="mt-auto pb-4">
-           <button className="p-3 text-stone-500 hover:text-white"><Search size={20} /></button>
-        </div>
-      </aside>
+    <main className="h-screen w-full bg-[#E6E4DD] text-[#4A453E] overflow-hidden relative font-sans antialiased">
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-60">
+        <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-[#DCD8D0] rounded-full blur-[140px] mix-blend-multiply animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[#EFEDE6] rounded-full blur-[140px] mix-blend-multiply animate-pulse-slow delay-1000" />
+      </div>
 
-      {/* MAIN STAGE */}
-      <main className="flex-1 relative h-full flex overflow-hidden">
-        
-        {/* PANEL A: DASHBOARD */}
-        <motion.div 
-          initial={false}
-          animate={{ 
-            width: viewState === 'overview' ? '100%' : '480px',
-            borderRightWidth: viewState === 'overview' ? '0px' : '1px'
-          }}
-          transition={fluidTransition}
-          className="relative h-full bg-[#050505] z-0 overflow-hidden border-white/5"
-        >
-          <motion.div 
-            className={`h-full w-full overflow-y-auto no-scrollbar pb-32 flex ${viewState === 'overview' ? 'justify-center' : 'justify-start pl-0'}`}
-            layout
-          >
-             <div className="w-full h-full max-w-6xl flex justify-center pt-8 md:pt-0">
-                <MorningBriefing state={viewState} />
-             </div>
-          </motion.div>
-          
-          <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent pointer-events-none z-10" />
-        </motion.div>
-
-        {/* PANEL B: CHAT HISTORY */}
-        <motion.div 
-          className="flex-1 h-full bg-[#050505] relative z-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: viewState === 'chat' ? 1 : 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }} 
-        >
-          {/* We pass nothing because ChatInterface now uses useSession() internally too, 
-              but if your ChatInterface component still expects props, we might need to update it.
-              Based on our previous steps, ChatInterface should be clean. */}
-          <ChatInterface viewState={viewState} onInteraction={() => setViewState('chat')} />
-        </motion.div>
-
-        {/* INPUT LAYER */}
+      <div className="relative z-10 h-full w-full p-4 md:p-6 grid h-full grid-cols-12 grid-rows-6 gap-6">
+        {/* LEFT PANEL: Widgets <-> History */}
         <motion.div
-          className="absolute left-0 w-full flex items-end justify-center pointer-events-none z-50 px-6"
-          initial={false}
-          animate={{
-            paddingLeft: viewState === 'overview' ? '0px' : '480px',
-            bottom: viewState === 'overview' ? '60px' : '40px',
-          }}
-          transition={fluidTransition}
+          layout
+          transition={MORPH_TRANSITION}
+          className={[
+            PANEL_BASE,
+            viewState === 'overview' ? 'flex-[1] bg-white/70' : 'w-80 shrink-0 bg-[#EBE7DF]/80',
+          ].join(' ')}
         >
-          <motion.form 
-            layout
-            onSubmit={handleSend}
-            className="relative flex items-end gap-3 bg-[#111111] p-2 pl-4 rounded-[36px] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] border border-white/[0.06] pointer-events-auto backdrop-blur-2xl"
-            initial={false}
-            animate={{
-              maxWidth: viewState === 'overview' ? '650px' : '900px', 
-              width: '100%' 
-            }}
-            transition={fluidTransition}
-          >
-            <button type="button" className="p-3 mb-0.5 rounded-full text-stone-500 hover:text-white transition-colors">
-              <Paperclip size={20} strokeWidth={2} />
-            </button>
-            <input 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Message Arthur..."
-              className="flex-1 bg-transparent border-none outline-none text-stone-200 placeholder-stone-600 font-sans text-[16px] h-[52px] py-3 min-w-0"
-              autoFocus
-            />
-            <button 
-              type="submit" 
-              disabled={!input.trim()}
-              className={`p-3 mb-0.5 rounded-full transition-all duration-300 flex items-center justify-center flex-shrink-0
-                ${input.trim() ? 'bg-white text-black hover:scale-105' : 'bg-[#222] text-stone-600'}`}
-            >
-              <ArrowUp size={22} strokeWidth={2.5} />
-            </button>
-          </motion.form>
+          <AnimatePresence mode="wait">
+            {viewState === 'overview' ? (
+              <motion.div
+                key="widgets"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="h-full w-full p-6 flex flex-col"
+              >
+                <div className="mb-6">
+                  <h2 className="text-lg font-serif text-[#2C2824]">Briefing</h2>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                    <p className="text-[#A8A29E] uppercase tracking-widest text-[10px] font-mono">Systems Nominal</p>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                  <div className="space-y-6">
+                    <div className="bg-white/40 border border-white/40 rounded-2xl p-4 backdrop-blur-md shadow-sm transition-all hover:bg-white/60 hover:shadow-md">
+                      <FinancialUpdates />
+                    </div>
+                    <div className="bg-white/40 border border-white/40 rounded-2xl p-4 backdrop-blur-md shadow-sm transition-all hover:bg-white/60 hover:shadow-md">
+                      <EventStatus />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="sidebar"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="h-full w-full"
+              >
+                <Sidebar />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
-        <AnimatePresence>
-          {viewState === 'overview' && (
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute bottom-6 left-0 w-full text-center pointer-events-none z-40"
+        {/* CENTER PANEL: Input <-> Chat */}
+        <motion.div
+          layout
+          transition={MORPH_TRANSITION}
+          className={[
+            PANEL_BASE,
+            viewState === 'overview' ? 'flex-[2] bg-[#F5F5F0]/70' : 'flex-[3] bg-[#F5F5F0] shadow-lg',
+          ].join(' ')}
+        >
+          <div className="absolute top-4 right-4 z-50">
+            <button
+              onClick={toggleView}
+              className="p-2.5 rounded-full bg-white/50 hover:bg-white text-[#4A453E] transition-all shadow-sm active:scale-95"
             >
-              <p className="text-[10px] text-stone-600 tracking-widest uppercase font-mono">
-                DanielOS v22.0 • Neural Interface Active
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {viewState === 'overview' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+            </button>
+          </div>
 
-      </main>
-    </div>
+          <AnimatePresence mode="wait">
+            {viewState === 'overview' ? (
+              <motion.div
+                key="overview-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="h-full w-full p-8 flex flex-col"
+              >
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <h1 className="text-4xl font-serif text-[#2C2824] tracking-tight mb-4">Good Afternoon, Daniel.</h1>
+                  <p className="text-sm text-[#8B8276] uppercase tracking-widest font-mono">Focus Mode</p>
+                </div>
+
+                <div className="w-full max-w-2xl mx-auto">
+                  <ArthurInput
+                    input={input}
+                    setInput={setInput}
+                    handleInputChange={handleInputChange}
+                    isLoading={isLoading}
+                    onInteraction={() => setViewState('chat')}
+                  />
+                </div>
+
+              </motion.div>
+            ) : (
+              <motion.div
+                key="chat-center"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
+                className="h-full w-full"
+              >
+                <ChatInterface viewState={viewState} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* RIGHT PANEL: Timeline <-> Status */}
+        <motion.div
+          layout
+          transition={MORPH_TRANSITION}
+          className={[
+            PANEL_BASE,
+            viewState === 'overview'
+              ? 'flex-[1] bg-white/70'
+              : 'flex-[0] w-0 min-w-0 opacity-0 pointer-events-none',
+          ].join(' ')}
+        >
+          <AnimatePresence mode="wait">
+            {viewState === 'overview' && (
+              <motion.div
+                key="timeline"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="h-full w-full p-6 flex flex-col"
+              >
+                <div className="mb-6">
+                  <h2 className="text-lg font-serif text-[#2C2824]">Telemetry</h2>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                    <p className="text-[#A8A29E] uppercase tracking-widest text-[10px] font-mono">System Health</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                  <div className="space-y-6">
+                    <WeatherCard />
+                    <TimeCard />
+                    <AIStatus />
+                    <div className="mask-gradient-bottom">
+                      <div className="pb-24">
+                        <h3 className="text-xs font-mono text-[#A8A29E] uppercase tracking-widest mb-4">Recent Activity</h3>
+                        <DailyBriefingClient items={[]} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </div>
+
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-30 bg-[url('/grain.svg')] mix-blend-multiply" />
+    </main>
   );
 }

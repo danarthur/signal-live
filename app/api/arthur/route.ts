@@ -1,32 +1,23 @@
-import { StreamingTextResponse } from 'ai';
-
-const PYTHON_BACKEND_URL = 'http://127.0.0.1:8000/api/chat';
-
-export const runtime = 'edge';
+import { StreamingTextResponse, LangChainStream } from 'ai';
 
 export async function POST(req: Request) {
-  try {
     const { messages } = await req.json();
+  const lastMessage = messages[messages.length - 1].content;
 
-    // Forward to Python Backend
-    const response = await fetch(PYTHON_BACKEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
-    });
+  // Create a stream to simulate AI thinking
+  const { stream, writer } = LangChainStream();
 
-    if (!response.ok) {
-      throw new Error(`Python Backend Error: ${response.statusText}`);
+  // Simulate a response (No Python required)
+  const responseText = `[SIMULATION MODE] \n\nI received your query: "${lastMessage}". \n\nMy core Python backend is currently offline, so I cannot process complex logic yet. However, the frontend interface is fully operational.`;
+
+  // Write the response slowly to look like AI
+  (async () => {
+    for (const char of responseText) {
+        await new Promise(r => setTimeout(r, 20)); // Typing effect
+        writer.write(char);
     }
+    writer.close();
+  })();
 
-    // Proxy the stream directly
-    return new StreamingTextResponse(response.body);
-
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Arthur is offline' }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  return new StreamingTextResponse(stream);
   }
-}
-

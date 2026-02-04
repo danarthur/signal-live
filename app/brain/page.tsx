@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 
 // Dynamically import the component with SSR disabled
 const NeuralNetwork = dynamic(
-  () => import('@/components/brain/NeuralNetwork'),
+  () => import('@/app/(features)/brain/components/NeuralNetwork'),
   { ssr: false }
 )
 
