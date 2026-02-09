@@ -1,0 +1,100 @@
+---
+description: Liquid Ceramic design standards, Bento Grids, and glass physics.
+globs: ["src/**/*.tsx", "src/app/globals.css", "postcss.config.mjs", "src/shared/ui/**/*"]
+---
+# 🎨 LIQUID CERAMIC DESIGN SYSTEM (FORMERLY JAPANDI)
+
+## 1. CORE PHILOSOPHY: "WARM ANALOG, DIGITAL PHYSICS"
+- **The Vibe:** "Morning Ceramic" meets "High-Fidelity Glass."
+- **Texture:** Every page must feel like "Rice Paper" (Matte, Warm) overlaid with "Liquid Glass" (High blur, High saturation).
+- **Layout:** Use **Bento Grids** for dashboard density—distinct, self-contained functional blocks.
+- **Light Mode:** "Morning Ceramic" (`#FDFCF8` Paper / `#4A453E` Ink).
+- **Dark Mode:** "Evening Obsidian" (`#141210` Void / `#E7E5E4` Ash).
+
+## 2. COMPONENT ARCHITECTURE (THE "LIQUID" CLASS)
+**NEVER** use generic `bg-white` or `shadow-md` for containers.
+You MUST use the dedicated CSS classes defined in `globals.css`:
+
+- **Standard Bento Card:**
+  ```tsx
+  <div className="liquid-panel p-6 flex flex-col gap-4">
+    <h3>Card Title</h3>
+    <div>Content</div>
+  </div>
+  ```
+  
+- **Interactive Tile (Hover State):**
+  ```tsx
+  <div className="liquid-panel liquid-panel-hover p-6 cursor-pointer">
+    <span className="text-ink-muted">Clickable</span>
+  </div>
+  ```
+
+- **Nested/Grouped Items (The "Island" Pattern):**
+  Use this for internal groupings inside a Bento card (like a list of tasks).
+  ```tsx
+  <div className="liquid-panel-nested p-4 rounded-xl">
+    <div className="flex justify-between">
+       <span>Task 1</span>
+       <span className="text-accent-sage">Active</span>
+    </div>
+  </div>
+  ```
+
+## 3. COLOR TOKENS (TAILWIND v4)
+Use semantic names, not hex codes:
+- **Backgrounds:** `bg-canvas` (Page Root), `bg-sidebar` (Nav).
+- **Typography:** `text-ink` (Primary), `text-ink-muted` (Secondary).
+- **Accents:**
+  - `bg-silk` (Primary Action / Highlight - "Warm Beige")
+  - `bg-stone` (Secondary Action)
+  - `bg-walnut` (Strong Contrast)
+  - `text-accent-sage` (Success/Nature)
+  - `text-accent-clay` (Alert/Warmth)
+
+## 4. GLASS PHYSICS STANDARDS
+- **Blur:** `backdrop-blur-2xl` (Standard 24px).
+- **Saturation:** High saturation (160%) is baked into `.liquid-panel`.
+- **Borders:** Always translucent (`border-white/10` or variable equivalent).
+- **Noise:** Apply `.grain-overlay` to the main layout wrapper for cinematic texture.
+
+## 5. TYPOGRAPHY & MOTION
+- **Fonts:** `Geist Sans` (UI) + `Outfit` (Headings).
+- **Selection:** `selection:bg-silk/30`.
+- **Animation (Framer Motion):**
+  - **Hover:** `transition-all duration-300` (matches `.liquid-panel`).
+  - **Float:** Use `animate-float` for hero elements.
+  - **Layout Transitions:** Use `layout` prop for Bento Grid reordering.
+  ```tsx
+  <motion.div layout transition={{ type: "spring", stiffness: 300, damping: 30 }} />
+  ```
+## 6. LAYOUT PRIMITIVES (BENTO GRID LOGIC)
+- **Grid Container:**
+  Use CSS Grid with `auto-rows` for distinct "Bento" sections.
+  ```tsx
+  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[minmax(180px,auto)]">
+    {/* Cards go here */}
+  </div>
+  ```
+
+- **Card Spanning:**
+  Use spans to create visual hierarchy (Hero vs. Utility).
+  - **Hero:** `col-span-2 row-span-2` (Main focus)
+  - **Tall:** `row-span-2` (Lists/Feeds)
+  - **Standard:** `col-span-1` (Metrics/Actions)
+
+- **Fluid Typography:**
+  Do NOT use fixed pixels. Use Tailwind's fluid utilities or clamp logic for headers.
+  - `text-4xl` → Should behave as `clamp(2rem, 5vw, 3rem)`
+  - **Constraint:** Headers must feel "tight" (tracking-tight).
+
+## 7. LIQUID PILL (FLOATING SURFACES)
+For Command Spine, modals, and premium floating panels: **Liquid glass** (cool, translucent).
+
+- **Material:** Translucent glass—cool, crisp, not warm/ceramic. Use `LiquidPill` from `@/shared/ui/surfaces`.
+- **Colors:** Neutral/cool. Light: `oklch(1 0 0 / 0.55)`. Dark: `oklch(0.2 0 0 / 0.6)`.
+- **Blur:** `backdrop-blur-[40px] saturate-[120%]` (avoid high saturation—causes warmth).
+- **Edge:** `ring-1 ring-inset ring-white/40`, `border border-white/20`.
+- **Specular:** Top-edge gradient `from-white/50 to-transparent`.
+- **Shadows:** Neutral gray stack only. No warm color bleed.
+- **Physics:** Framer Motion `type: "spring", stiffness: 300, damping: 30`. `rounded-[2rem]` (pill-like).

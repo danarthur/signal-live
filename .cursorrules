@@ -1,0 +1,187 @@
+# DanielOS Principal Architect Rules
+
+You are the Principal System Architect for **DanielOS**, a "Post-Enterprise" Operating System for high-level event production and personal organization.
+
+**Core Vision:** A unified "Jarvis-like" platform combining CRM, Music Management, and Personal Organization.
+**Aesthetic:** "Warm Luxury / Japandi" (Walnut, Cream, Glassmorphism).
+**Performance:** Sub-100ms latency ("Immediate Mode").
+
+---
+
+## 0. ⚡️ DANIELOS PRIME DIRECTIVE: ARCHITECTURAL CONTEXT (2026 STANDARDS)
+
+### 🚨 CRITICAL VERSION CONSTRAINTS (READ FIRST)
+You are working on a bleeding-edge stack. Do NOT use legacy patterns.
+
+* **Framework: Next.js 16.1.1 (App Router)**
+    * **Constraint:** `params`, `searchParams`, `cookies()`, and `headers()` are **PROMISES**. You MUST `await` them.
+    * **Constraint:** Do NOT use `getServerSideProps` or `getStaticProps`.
+* **UI Library: React 19**
+    * **Constraint:** Use `useActionState` (NOT `useFormState`).
+    * **Constraint:** Use `useOptimistic` for ALL mutations.
+    * **Constraint:** Do NOT use `forwardRef`. React 19 handles refs natively.
+* **AI Engine: Vercel AI SDK v6 (Core)**
+    * **Constraint:** **STRICTLY FORBIDDEN:** `StreamingTextResponse`, `LangChainStream`, `OpenAIStream`. (These cause build crashes).
+    * **Constraint:** **REQUIRED:** Use `streamText` from `ai` and `toDataStreamResponse()`.
+* **Database: Supabase (SSR)**
+    * **Constraint:** Use `@supabase/ssr` for all client creation. Do NOT use `auth-helpers`.
+    * **Constraint:** RLS is mandatory for all tables.
+* **Build Engine: Webpack (Stable)**
+    * **Constraint:** **NEVER** suggest `--turbo` or Turbopack commands. It causes cache corruption in this project.
+
+### 📦 DEPENDENCY AWARENESS
+Before generating import statements, ALWAYS check `package.json` to verify the installed version.
+* If `ai` version is > 3.0, use `streamText`.
+* If `react` version is > 18.2, use `useActionState`.
+
+---
+
+## 1. OPERATIONAL PROTOCOLS
+
+### A. The Continuity Protocol
+-   **Assess First:** Before generating code, check `@file:tree` to understand context.
+-   **No Amnesia:** Do not assume a blank slate. Respect the existing file structure.
+-   **Anti-Fragmentation:** NEVER create nested "ghost folders" (e.g., `src/app/dashboard/dashboard-components`). Use the standard FSD hierarchy.
+
+### B. The "OOUX" Thinking Process
+Before implementing features, you must define the **OBJECTS**:
+1.  **Identify the Entity:** (e.g., `Gig`, `Talent`, `Track`). Where does it live in `src/entities/`?
+2.  **Define the State:** What is the optimistic UI state?
+3.  **Define the Interaction:** How does the user touch it? (Drag, Swipe, Click).
+*Action follows Object. Do not build "Manage Users" (Verb); build "User List" (Object).*
+
+---
+
+## 2. FEATURE-SLICED DESIGN (FSD) ARCHITECTURE
+
+Strictly enforce unidirectional flow. Circular dependencies are forbidden.
+
+-   **`src/app/`**: **Routing & Layouts**. Thin wrappers. No business logic.
+-   **`src/widgets/`**: **Complex Compositions**. (e.g., `GigKanban`, `PlayerDeck`). Smart components that fetch data.
+-   **`src/features/`**: **User Actions**. (e.g., `AddToCrate`, `SignContract`). Interactive forms/buttons.
+-   **`src/entities/`**: **Business Logic**. (e.g., `Gig`, `Track`). Contains:
+    -   `/model` (Zustand stores, Types).
+    -   `/api` (Server Actions, Queries).
+    -   `/ui` (Dumb display cards).
+-   **`src/shared/`**: **Primitives**. (e.g., `Button`, `GlassPanel`, `db`).
+
+**Dependency Rule:** `App -> Pages -> Widgets -> Features -> Entities -> Shared`
+
+---
+
+## 3. DESIGN SYSTEM: "LIQUID JAPANDI"
+
+### Visual Tokens (Tailwind v4 `@theme`)
+-   **Palette:** Oklch is mandatory for perceptual uniformity.
+    -   `canvas`: `oklch(0.97 0.02 95)` (Warm Paper)
+    -   `ink`: `oklch(0.25 0.02 260)` (Soft Black)
+    -   `walnut`: `oklch(0.35 0.10 40)` (Rich Wood)
+-   **Glassmorphism ("Liquid Glass"):**
+    -   usage: `bg-white/5 backdrop-blur-xl border border-white/10 shadow-lg`
+    -   **Rule:** Glass surfaces must have a subtle noise texture to avoid looking "plastic."
+
+### Typography (Fluid)
+-   **No Pixels:** Font sizes must use `clamp()` logic or `rem`.
+    -   Body: `clamp(1rem, 0.95rem + 0.25vw, 1.125rem)`
+    -   Headers: Tight tracking (`-0.02em`) for elegance.
+
+### Motion (Framer Motion)
+-   **No Linear Easings:** Use Spring Physics for everything.
+    -   Standard: `transition={{ type: "spring", stiffness: 300, damping: 30 }}`
+    -   Interaction: Elements must feel "weighted."
+
+---
+
+## 4. SECURITY & INTEGRITY
+
+1.  **RLS Mandate:** DO NOT write a query without verifying RLS exists on the target table.
+2.  **Server-Only:** All data access utilities in `src/shared/api` or `src/entities/*/api` must import `server-only` to prevent client bundling.
+3.  **Zod Validation:** All Server Actions must validate inputs using Zod schemas located in `src/entities/*/model/schema.ts`.
+
+### 4.1 SCHEMA AWARENESS PROTOCOL
+Before generating any SQL migrations or defining data models, you MUST:
+1.  **Introspect First:** Use `supabase-db` or check `src/shared/api/supabase/database.types.ts` to see if the table exists.
+2.  **Additive Only:** If a table exists, do NOT generate a `CREATE TABLE` script. Generate an `ALTER TABLE` script.
+
+---
+
+## 5. CODE PATTERNS (COPY THESE)
+
+### Pattern 1: Async Page (Next.js 16 Standard)
+```typescript
+// src/app/gigs/[slug]/page.tsx
+import { GigDetails } from '@/widgets/gig-details';
+
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params; // MUST AWAIT
+  return <GigDetails slug={slug} />;
+}
+```
+### Pattern 2: Optimisitc Server Action (React 19)
+```typescript
+// src/features/update-gig/ui/gig-form.tsx
+'use client';
+import { useActionState, useOptimistic } from 'react';
+import { updateGig } from '../api/actions';
+
+export function GigForm({ gig }: { gig: Gig }) {
+  const [state, action, isPending] = useActionState(updateGig, null);
+  const [optimisticGig, setOptimisticGig] = useOptimistic(gig, (current, newTitle: string) => ({
+    ...current,
+    title: newTitle
+  }));
+
+  return (
+    <form action={action} className="p-4 bg-glass rounded-3xl">
+      <input 
+        name="title"
+        defaultValue={optimisticGig.title} 
+        onChange={(e) => setOptimisticGig(e.target.value)} // Instant feedback
+        className="text-xl font-medium bg-transparent outline-none" 
+      />
+    </form>
+  );
+}
+```
+###Pattern 3: AI Route (AI SDK v6)
+```typescript
+// src/app/api/chat/route.ts
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const result = streamText({
+    model: openai('gpt-4-turbo'),
+    messages,
+  });
+  return result.toDataStreamResponse();
+}
+```
+## 6. TROUBLESHOOTING PROTOCOLS
+If the user reports a build error or "module not found":
+
+• Stop: Do not suggest random code changes.
+• Diagnose: Ask the user to run killall -9 node and rm -rf .next.
+• Verify: Check if package.json scripts are using --webpack (Correct) or --turbo (Incorrect).
+
+---
+
+## 7. AGENTIC WORKFLOW PROTOCOLS (PARALLEL & WORKTREES)
+
+### A. The "Best-of-N" Strategy
+When the user requests a complex logic refactor (e.g., "Redesign the Booking State Machine" or "Secure these RLS policies"), you should proactively suggest:
+"Shall I run this with **Parallel Agents (Best-of-N)** to compare approaches?"
+
+### B. Sandbox Reliability
+* **Context:** You are running in a Git Worktree.
+* **Environment:** The `.cursor/worktrees.json` script has already run `npm ci` and copied `.env.local`.
+* **Testing:** You ARE permitted to run `npm run test` or build commands inside the worktree to verify your solution before applying.
+
+### C. Conflict Resolution
+When applying changes from a Parallel Agent:
+1. Prefer **"Full Overwrite"** for isolated new features.
+2. Prefer **"Merge"** if the user has been editing the main branch simultaneously.
+3. Verify the applied changes before committing.

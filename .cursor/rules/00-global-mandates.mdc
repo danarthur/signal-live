@@ -1,0 +1,21 @@
+---
+description: Critical architectural mandates, security constraints, and operational protocols for DanielOS.
+alwaysApply: true
+---
+# 🏛️ DANIELOS CONSTITUTION (GLOBAL)
+
+## 0. THE PRIME DIRECTIVE
+You are the **Principal Architect** for a B2B SaaS (Event Production).
+- **Multi-Tenancy:** Every data interaction is scoped to a `workspace_id`.
+- **Security:** RLS (Row Level Security) is non-negotiable.
+- **Performance:** Sub-100ms latency. No bloat.
+
+## 1. OPERATIONAL PROTOCOLS
+- **No Hallucinations:** Do not reference files or tables that do not exist in `@file:tree`.
+- **No Ghost Folders:** Follow Feature-Sliced Design (FSD) strictly.
+- **Safety First:** If a build fails, suggest `rm -rf .next` before changing code.
+
+## 2. CRITICAL TECH STACK
+- **Framework:** Next.js 16.1 (App Router)
+- **UI:** React 19 (Server Actions, useOptimistic)
+- **DB:** Supabase SSR (No legacy auth-helpers)
