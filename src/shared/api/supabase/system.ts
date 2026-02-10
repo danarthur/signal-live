@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
 // ⚠️ SECURITY WARNING:
 // This client uses the SERVICE_ROLE_KEY. It bypasses ALL Row Level Security.
@@ -8,9 +9,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-let cachedClient: ReturnType<typeof createClient> | null = null;
+let cachedClient: SupabaseClient<Database> | null = null;
 
-export function getSystemClient() {
+export function getSystemClient(): SupabaseClient<Database> {
   if (cachedClient) {
     return cachedClient;
   }
@@ -19,7 +20,7 @@ export function getSystemClient() {
     throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   }
 
-  cachedClient = createClient(supabaseUrl, supabaseServiceKey, {
+  cachedClient = createClient<Database>(supabaseUrl, supabaseServiceKey, {
     auth: {
       persistSession: false, // We don't need to maintain a session for the system bot
       autoRefreshToken: false,

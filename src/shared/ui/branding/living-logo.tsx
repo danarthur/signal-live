@@ -59,7 +59,6 @@ export function LivingLogo({
       fill="none"
       className={className}
       initial={false}
-      transition={SPRING}
       animate={
         isError
           ? { skewX: 20, x: [-2, 2, -2] }

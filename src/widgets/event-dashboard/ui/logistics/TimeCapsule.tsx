@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo } from 'react';
-import { Controller, type Control, type UseFormWatch, type UseFormSetValue } from 'react-hook-form';
+import { Controller, type Control, type Path, type UseFormWatch, type UseFormSetValue } from 'react-hook-form';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { CeramicDatePicker } from '@/app/(dashboard)/(features)/crm/components/ceramic-date-picker';
@@ -178,28 +178,29 @@ const SET_BY_TIME_HELP =
 export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, setValue }: TimeCapsuleProps<T>) {
   const [showSetByTimeHelp, setShowSetByTimeHelp] = React.useState(false);
   const { militaryTime } = usePreferences();
-  const startDate = watch('start_date');
-  const startTime = watch('start_time');
-  const endDate = watch('end_date');
-  const endTime = watch('end_time');
-  const setByTime = watch('set_by_time');
-  const multiDay = watch('multi_day');
-  const showLoadInOut = watch('show_load_in_out');
-  const loadInDate = watch('load_in_date');
-  const loadInTime = watch('load_in_time');
-  const loadOutDate = watch('load_out_date');
-  const loadOutTime = watch('load_out_time');
+  const startDate = watch('start_date' as Path<T>) as string;
+  const startTime = watch('start_time' as Path<T>) as string;
+  const endDate = watch('end_date' as Path<T>) as string;
+  const endTime = watch('end_time' as Path<T>) as string;
+  const setByTime = watch('set_by_time' as Path<T>) as boolean;
+  const multiDay = watch('multi_day' as Path<T>) as boolean;
+  const showLoadInOut = watch('show_load_in_out' as Path<T>) as boolean;
+  const loadInDate = watch('load_in_date' as Path<T>) as string;
+  const loadInTime = watch('load_in_time' as Path<T>) as string;
+  const loadOutDate = watch('load_out_date' as Path<T>) as string;
+  const loadOutTime = watch('load_out_time' as Path<T>) as string;
 
   // Auto: end date ≠ start date → set multi_day true; same date → false
+  const setVal = setValue as (name: string, value: unknown) => void;
   useEffect(() => {
     if (!startDate || !endDate) return;
-    setValue('multi_day', startDate !== endDate);
-  }, [startDate, endDate, setValue]);
+    setVal('multi_day', startDate !== endDate);
+  }, [startDate, endDate, setVal]);
 
   // Sync end_date to start_date when single-day (multi_day is false)
   useEffect(() => {
-    if (!multiDay && startDate) setValue('end_date', startDate);
-  }, [multiDay, startDate, setValue]);
+    if (!multiDay && startDate) setVal('end_date', startDate);
+  }, [multiDay, startDate, setVal]);
 
   // Guardrails: end before start (same day + set by time)
   const startMs = useMemo(() => {
@@ -291,7 +292,7 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
             <CeramicSwitch
               id="time-capsule-set-by-time"
               checked={setByTime}
-              onCheckedChange={(v) => setValue('set_by_time', v)}
+              onCheckedChange={(v) => setVal('set_by_time', v)}
               aria-label="Set by time"
             />
             <label htmlFor="time-capsule-set-by-time" className="flex cursor-pointer items-center gap-2">
@@ -323,7 +324,7 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
             <CeramicSwitch
               id="time-capsule-show-load-in-out"
               checked={showLoadInOut}
-              onCheckedChange={(v) => setValue('show_load_in_out', v)}
+              onCheckedChange={(v) => setVal('show_load_in_out', v)}
               aria-label="Show load-in / load-out"
             />
             <label htmlFor="time-capsule-show-load-in-out" className="flex cursor-pointer items-center gap-2">
@@ -348,7 +349,7 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
             <span>End time is before start time.</span>
             <button
               type="button"
-              onClick={() => setValue('end_time', startTime || '00:00')}
+              onClick={() => setVal('end_time', startTime || '00:00')}
               className="text-xs font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-[var(--ring)] rounded px-1"
             >
               Set end = start
@@ -363,11 +364,11 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
               Start date
             </label>
             <Controller
-              name="start_date"
+              name={"start_date" as Path<T>}
               control={control}
               render={({ field }) => (
                 <CeramicDatePicker
-                  value={field.value}
+                  value={String(field.value ?? '')}
                   onChange={field.onChange}
                   placeholder="Select start date"
                 />
@@ -379,11 +380,11 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
               End date {!multiDay && <span className="normal-case text-ink-muted/80">(same day)</span>}
             </label>
             <Controller
-              name="end_date"
+              name={"end_date" as Path<T>}
               control={control}
               render={({ field }) => (
                 <CeramicDatePicker
-                  value={field.value}
+                  value={String(field.value ?? '')}
                   onChange={field.onChange}
                   placeholder={multiDay ? 'Select end date' : 'Same as start'}
                 />
@@ -400,12 +401,12 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
                 SET TIME
               </label>
               <Controller
-                name="set_time"
+                name={"set_time" as Path<T>}
                 control={control}
                 render={({ field }) => (
                   <TimeInput
                     id="event-set-time"
-                    value={field.value}
+                    value={String(field.value ?? '')}
                     onChange={field.onChange}
                     militaryTime={militaryTime}
                   />
@@ -418,12 +419,12 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
               Start time
             </label>
             <Controller
-              name="start_time"
+              name={"start_time" as Path<T>}
               control={control}
               render={({ field }) => (
                 <TimeInput
                   id="event-start-time"
-                  value={field.value}
+                  value={String(field.value ?? '')}
                   onChange={field.onChange}
                   militaryTime={militaryTime}
                 />
@@ -435,12 +436,12 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
               End time
             </label>
             <Controller
-              name="end_time"
+              name={"end_time" as Path<T>}
               control={control}
               render={({ field }) => (
                 <TimeInput
                   id="event-end-time"
-                  value={field.value}
+                  value={String(field.value ?? '')}
                   onChange={field.onChange}
                   militaryTime={militaryTime}
                 />
@@ -460,11 +461,11 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
                   Load-in date
                 </label>
                 <Controller
-                  name="load_in_date"
+                  name={"load_in_date" as Path<T>}
                   control={control}
                   render={({ field }) => (
                     <CeramicDatePicker
-                      value={field.value}
+                      value={String(field.value ?? '')}
                       onChange={field.onChange}
                       placeholder="Load-in date"
                     />
@@ -476,12 +477,12 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
                       Load-in time
                     </label>
                     <Controller
-                      name="load_in_time"
+                      name={"load_in_time" as Path<T>}
                       control={control}
                       render={({ field }) => (
                         <TimeInput
                           id="event-load-in-time"
-                          value={field.value}
+                          value={String(field.value ?? '')}
                           onChange={field.onChange}
                           militaryTime={militaryTime}
                         />
@@ -495,11 +496,11 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
                   Load-out date
                 </label>
                 <Controller
-                  name="load_out_date"
+                  name={"load_out_date" as Path<T>}
                   control={control}
                   render={({ field }) => (
                     <CeramicDatePicker
-                      value={field.value}
+                      value={String(field.value ?? '')}
                       onChange={field.onChange}
                       placeholder="Load-out date"
                     />
@@ -511,12 +512,12 @@ export function TimeCapsule<T extends TimeCapsuleFormSlice>({ control, watch, se
                       Load-out time
                     </label>
                     <Controller
-                      name="load_out_time"
+                      name={"load_out_time" as Path<T>}
                       control={control}
                       render={({ field }) => (
                         <TimeInput
                           id="event-load-out-time"
-                          value={field.value}
+                          value={String(field.value ?? '')}
                           onChange={field.onChange}
                           militaryTime={militaryTime}
                         />

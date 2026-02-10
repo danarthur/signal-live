@@ -92,7 +92,7 @@ export function CeramicDatePicker({
         captionLayout="dropdown"
         defaultMonth={selected ?? new Date()}
         hideNavigation
-        components={{ CaptionLabel: () => null, Nav: () => null }}
+        components={{ CaptionLabel: () => <></>, Nav: () => <></> }}
         startMonth={new Date(new Date().getFullYear() - 20, 0)}
         endMonth={new Date(new Date().getFullYear() + 10, 11)}
         classNames={{

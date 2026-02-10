@@ -30,7 +30,7 @@ interface QboInvoice {
 
 interface QboQueryResponse<T> {
   QueryResponse?: {
-    [key: string]: T[] | undefined;
+    [key: string]: T[] | number | undefined;
     totalCount?: number;
     startPosition?: number;
     maxResults?: number;
@@ -80,7 +80,8 @@ export async function syncEventFinancials(
       query,
     })) as QboQueryResponse<QboInvoice>;
 
-    const invoices: QboInvoice[] = res?.QueryResponse?.Invoice ?? [];
+    const raw = res?.QueryResponse?.Invoice;
+    const invoices: QboInvoice[] = Array.isArray(raw) ? raw : [];
     const rows: Array<{
       workspace_id: string;
       event_id: string;

@@ -10,6 +10,7 @@ export const PYTHON_BACKEND_URL =
 export const SITE_CONFIG = {
   title: 'Signal',
   description: 'The Event Operating System',
+  owner: 'Arthur',
   contactEmail: 'hello@runsignal.live',
   socialX: 'https://x.com/runsignal_live',
 } as const;

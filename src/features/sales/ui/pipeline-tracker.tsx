@@ -30,7 +30,6 @@ export function PipelineTracker({ currentStage, stages, className }: PipelineTra
                 {/* Step circle */}
                 <motion.div
                   layout
-                  transition={spring}
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-xs font-medium tabular-nums',
                     isCompleted &&
@@ -54,7 +53,7 @@ export function PipelineTracker({ currentStage, stages, className }: PipelineTra
                   transition={
                     isCurrent
                       ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
-                      : undefined
+                      : spring
                   }
                 >
                   {isCompleted ? (

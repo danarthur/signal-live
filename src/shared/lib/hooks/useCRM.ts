@@ -38,15 +38,20 @@ export function useGigs() {
       if (error) throw error;
       const rows = (data ?? []) as Array<Record<string, unknown>>;
       setGigs(
-        rows.map((e) => ({
-          id: e.id as string,
-          title: (e.title as string) ?? '',
-          status: (e.lifecycle_status as string) ?? '',
-          event_date: e.starts_at ? String((e.starts_at as string).slice(0, 10)) : '',
-          event_location: (e.location_name as string) ?? '',
-          budget_estimated: (e.crm_estimated_value as number) ?? undefined,
-          client: (e.organizations as { name?: string; type?: string } | null) ?? null,
-        }))
+        rows.map((e) => {
+          const org = e.organizations as { name?: string; type?: string } | null;
+          return {
+            id: e.id as string,
+            title: (e.title as string) ?? '',
+            status: (e.lifecycle_status as string) ?? '',
+            event_date: e.starts_at ? String((e.starts_at as string).slice(0, 10)) : '',
+            event_location: (e.location_name as string) ?? '',
+            budget_estimated: (e.crm_estimated_value as number) ?? undefined,
+            client: org
+              ? { name: org.name ?? '', type: org.type ?? '' }
+              : null,
+          };
+        })
       );
     } catch (error) {
       console.error('Error fetching events (CRM):', error);

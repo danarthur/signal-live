@@ -51,7 +51,8 @@ export async function submitPublicPayment(
   // 1. Create payment for full remaining balance
   const { error: payError } = await supabase.from('payments').insert({
     invoice_id: data.invoice.id,
-    amount: String(data.balanceDue),
+    workspace_id: data.workspace.id,
+    amount: data.balanceDue,
     method,
     status: 'succeeded',
     reference_id: `public-${method}-${Date.now()}`,

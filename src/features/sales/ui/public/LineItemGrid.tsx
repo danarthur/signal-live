@@ -11,7 +11,7 @@ export interface LineItemGridProps {
   className?: string;
 }
 
-function formatPrice(unitPrice: string, quantity: number): string {
+function formatPrice(unitPrice: string | number, quantity: number): string {
   const total = parseFloat(String(unitPrice)) * quantity;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

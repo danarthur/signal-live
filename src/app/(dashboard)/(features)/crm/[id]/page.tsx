@@ -46,13 +46,13 @@ export default function RunOfShowPage() {
         const mm = String(normalizedMinutes % 60).padStart(2, '0');
         return `${hh}:${mm}`;
       }
-      currentMinutes += cue.duration_minutes;
+      currentMinutes += cue.duration_minutes ?? 0;
     }
     return null;
   }, [cues, selectedCueId]);
 
   const totalDurationMinutes = useMemo(
-    () => cues.reduce((total, cue) => total + cue.duration_minutes, 0),
+    () => cues.reduce((total, cue) => total + (cue.duration_minutes ?? 0), 0),
     [cues]
   );
 

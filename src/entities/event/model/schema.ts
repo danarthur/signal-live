@@ -21,7 +21,7 @@ const complianceDocSchema = z.object({
 
 const complianceDocsSchema = z.union([
   z.array(complianceDocSchema),
-  z.record(z.unknown()),
+  z.record(z.string(), z.unknown()),
 ]);
 
 export const eventLifecycleStatusSchema = z.enum([

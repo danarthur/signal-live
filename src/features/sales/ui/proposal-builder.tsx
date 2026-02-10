@@ -69,7 +69,7 @@ export function ProposalBuilder({
   const [packagesLoaded, setPackagesLoaded] = useState(false);
   const [packagesError, setPackagesError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const circuitBreakerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const circuitBreakerRef = useRef<number | null>(null);
 
   const loadPackages = useCallback(() => {
     if (!workspaceId) {
@@ -155,7 +155,7 @@ export function ProposalBuilder({
   // When user returns to the tab and catalog is still loading, retry
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let retryTimeout: number | null = null;
     const onVisibilityChange = () => {
       if (document.visibilityState !== 'visible') return;
       if (!packagesLoaded && workspaceId) {

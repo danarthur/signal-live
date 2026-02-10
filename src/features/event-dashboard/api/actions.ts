@@ -1,5 +1,6 @@
 'use server';
 
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/shared/api/supabase/server';
 import { updateEventSchema, type UpdateEventInput } from '@/entities/event';
@@ -12,7 +13,7 @@ export async function updateEventDetails(
 ): Promise<UpdateEventDetailsResult> {
   const parsed = updateEventSchema.safeParse(data);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.flatten().message ?? 'Validation failed' };
+    return { ok: false, error: z.prettifyError(parsed.error) ?? 'Validation failed' };
   }
 
   const supabase = await createClient();

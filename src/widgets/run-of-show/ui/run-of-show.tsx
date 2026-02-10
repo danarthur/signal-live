@@ -118,7 +118,7 @@ export function RunOfShow({
       }
 
       const displayTime = formatMinutes(currentMinutes);
-      currentMinutes += cue.duration_minutes;
+      currentMinutes += cue.duration_minutes ?? 0;
       return displayTime;
     });
   }, [displayCues]);
@@ -145,7 +145,7 @@ export function RunOfShow({
                 className="flex flex-col gap-3 px-0"
               >
                 {displayCues.map((cue, index) => {
-                  const Meta = typeIcons[cue.type] || typeIcons.logistics;
+                  const Meta = typeIcons[cue.type ?? 'logistics'] ?? typeIcons.logistics;
 
                   return (
                     <Draggable key={cue.id} draggableId={cue.id} index={index}>
@@ -183,7 +183,7 @@ export function RunOfShow({
                               <span className="font-mono text-sm font-medium text-ink">
                                 {computedStartTimes[index] ?? DEFAULT_START_TIME}
                               </span>
-                              <span className="font-mono text-[10px] text-ink-muted">{cue.duration_minutes}m</span>
+                              <span className="font-mono text-[10px] text-ink-muted">{cue.duration_minutes ?? 0}m</span>
                             </div>
 
                             {/* CONNECTOR */}

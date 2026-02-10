@@ -41,7 +41,7 @@ export async function getFinancials(
   const { data: invoiceRows, error: invError } = await supabase
     .from('invoices')
     .select(
-      'id, event_id, invoice_number, status, total_amount, token, issue_date, due_date, created_at'
+      'id, event_id, proposal_id, invoice_number, status, total_amount, token, issue_date, due_date, created_at'
     )
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
@@ -161,6 +161,7 @@ export async function getFinancials(
         id: item.id,
         description: item.description,
         amount: Number(item.amount),
+        cost: item.cost,
         invoice_number: inv.invoice_number,
       });
     }

@@ -31,7 +31,7 @@ const fullTitle = (event: CalendarEvent) =>
 
 export interface WeekEventProps {
   position: EventPosition;
-  onClick?: () => void;
+  onClick?: (evt: React.MouseEvent) => void;
 }
 
 export function WeekEvent({ position, onClick, variant = 'absolute' }: WeekEventProps & { variant?: 'absolute' | 'inline' }) {
