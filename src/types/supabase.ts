@@ -2554,6 +2554,20 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
+/** Row type for run_of_show_cues table */
+export type Cue = Tables<"run_of_show_cues">
+/** Enum for cue type (stage, audio, lighting, video, logistics) */
+export type CueType = Enums<"cue_type">
+
+/** Row type for proposals table */
+export type Proposal = Tables<"proposals">
+/** Row type for proposal_items table */
+export type ProposalItem = Tables<"proposal_items">
+/** Row type for packages table */
+export type Package = Tables<"packages">
+/** Enum for payment method */
+export type PaymentMethod = Enums<"payment_method">
+
 export const Constants = {
   public: {
     Enums: {
