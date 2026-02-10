@@ -111,7 +111,7 @@ export function MonthGrid({ events, viewDate, onEventClick, onDayClick, locale }
                   <button
                     type="button"
                     onClick={() => onEventClick?.(dayEvents[0])}
-                    className="text-left w-full rounded-lg transition-all duration-300 hover:bg-ink/[0.06] dark:hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-inset"
+                    className="text-left w-full rounded-lg transition-all duration-300 hover:bg-ceramic/10 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-inset"
                   >
                     <EventPill event={dayEvents[0]} />
                   </button>

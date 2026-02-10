@@ -8,9 +8,10 @@ export const PYTHON_BACKEND_URL =
 
 // Site Information
 export const SITE_CONFIG = {
-  title: 'DanielOS',
-  description: 'Personal operating system for Daniel',
-  owner: 'Daniel',
+  title: 'Signal',
+  description: 'The Event Operating System',
+  contactEmail: 'hello@runsignal.live',
+  socialX: 'https://x.com/runsignal_live',
 } as const;
 
 // API Routes

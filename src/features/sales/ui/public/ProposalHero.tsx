@@ -13,17 +13,17 @@ export interface ProposalHeroProps {
 }
 
 export function ProposalHero({ data, className }: ProposalHeroProps) {
-  const { gig, workspace } = data;
-  const clientName = gig.clientName ?? gig.title ?? 'Client';
-  const eventDate = gig.eventDate
-    ? new Date(gig.eventDate).toLocaleDateString(undefined, {
+  const { event, workspace } = data;
+  const clientName = event.clientName ?? event.title ?? 'Client';
+  const eventDate = event.startsAt
+    ? new Date(event.startsAt).toLocaleDateString(undefined, {
         weekday: 'short',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       })
     : null;
-  const eventTitle = gig.title && gig.title !== clientName ? gig.title : null;
+  const eventTitle = event.title && event.title !== clientName ? event.title : null;
 
   return (
     <motion.header
@@ -33,7 +33,7 @@ export function ProposalHero({ data, className }: ProposalHeroProps) {
       className={cn('w-full max-w-2xl mx-auto text-center', className)}
     >
       <div className="flex justify-center mb-4">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/95 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-800 shadow-sm dark:border-emerald-800/50 dark:bg-emerald-950/90 dark:text-emerald-200">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/95 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/90 dark:text-emerald-200">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />

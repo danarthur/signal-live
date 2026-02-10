@@ -12,8 +12,8 @@ import { getWorkspaceMembers, getWorkspaceLocations } from '@/app/actions/worksp
 import type { WorkspaceMemberData, LocationData, WorkspacePermissions } from '@/app/actions/workspace';
 
 export const metadata = {
-  title: 'Settings | DanielOS',
-  description: 'Manage your DanielOS settings and integrations',
+  title: 'Settings | Signal',
+  description: 'Manage your Signal settings and integrations',
 };
 
 export const dynamic = 'force-dynamic';

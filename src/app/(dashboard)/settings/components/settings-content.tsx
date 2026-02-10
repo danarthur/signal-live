@@ -22,10 +22,13 @@ import {
   RefreshCw,
   MapPin,
   Plus,
+  Clock,
 } from 'lucide-react';
 import { updateProfile, uploadAvatar } from '@/features/identity-hydration';
 import { QboConnectCard } from '@/features/auth/qbo-connect/ui/connect-card';
 import { TeamManagement } from './team-management';
+import { usePreferences } from '@/shared/ui/providers/PreferencesContext';
+import { CeramicSwitch } from '@/shared/ui/switch';
 import type { WorkspaceMemberData, LocationData } from '@/app/actions/workspace';
 
 interface SettingsData {
@@ -59,6 +62,7 @@ interface SettingsContentProps {
 export function SettingsContent({ data, searchParams }: SettingsContentProps) {
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { militaryTime, setMilitaryTime } = usePreferences();
   
   // Profile state
   const [fullName, setFullName] = useState(data.profile.fullName);
@@ -116,12 +120,41 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...springConfig, delay: 0.1 }}
       >
-        <h1 className="text-3xl font-light text-ink tracking-tight">Settings</h1>
+        <h1 className="text-3xl font-light text-ink tracking-tight">Kit</h1>
         <p className="text-sm text-ink-muted font-light mt-1">
-          Manage your account and integrations
+          Tune your account and integrations
         </p>
-      </motion.div>
-      
+</motion.div>
+
+      {/* Preferences Section */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...springConfig, delay: 0.12 }}
+        className="liquid-panel p-6 space-y-6"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+            <Clock className="w-5 h-5 text-ink-muted" />
+          </div>
+          <div>
+            <h2 className="text-lg font-medium text-ink">Preferences</h2>
+            <p className="text-xs text-ink-muted">Site-wide display and time options</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-ink/[0.02] border border-[var(--glass-border)]">
+          <div>
+            <p className="text-sm font-medium text-ink">Use 24-hour time</p>
+            <p className="text-xs text-ink-muted mt-0.5">Show times as 14:30 instead of 2:30 PM across the app</p>
+          </div>
+          <CeramicSwitch
+            checked={militaryTime}
+            onCheckedChange={setMilitaryTime}
+            aria-label="Use 24-hour time"
+          />
+        </div>
+      </motion.section>
+
       {/* Profile Section */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -193,7 +226,7 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
                   setAvatarUrl(null);
                 }}
                 className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white
-                  flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100
+                  flex items-center justify-center opacity-0 group-hover:opacity-100
                   transition-opacity hover:bg-red-600"
               >
                 <X className="w-3 h-3" />
@@ -244,10 +277,10 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
                 {isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
+                    Locking...
                   </>
                 ) : (
-                  'Save Changes'
+                  'Lock'
                 )}
               </motion.button>
               

@@ -37,11 +37,11 @@ export function CRMProductionQueue({ gigs }: { gigs: Gig[] }) {
         <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl font-light text-ink tracking-tight mb-2">Production Queue</h1>
-            <p className="text-ink-muted">Manage your gigs from inquiry to execution.</p>
+            <p className="text-ink-muted">Lead your pipeline from inquiry to execution.</p>
           </div>
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="bg-ink text-canvas px-6 py-3 rounded-full hover:bg-walnut transition-colors shadow-lg flex items-center gap-2"
+            className="bg-ink text-canvas px-6 py-3 rounded-full hover:bg-walnut transition-colors liquid-levitation flex items-center gap-2"
           >
             <Plus size={18} /> New Gig
           </button>

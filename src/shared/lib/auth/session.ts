@@ -16,7 +16,7 @@ export const DEV_SESSION = {
   },
   workspace: {
     id: '7c977570-ae46-444f-91db-90a5f595b819',
-    name: 'DanielOS Main',
+    name: 'Signal Main',
     plan: 'enterprise',
   },
 };
@@ -32,10 +32,13 @@ export async function getSession(): Promise<Session> {
       return DEV_SESSION;
     }
 
+    // Same ordering as dashboard layout and getActiveWorkspaceId() so session.workspace.id
+    // always matches the active workspace (avoids "events disappeared" when fallback was used).
     const { data: membership, error: memberError } = await supabase
       .from('workspace_members')
       .select('workspace_id, role, workspaces:workspace_id (id, name)')
       .eq('user_id', user.id)
+      .order('role')
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();

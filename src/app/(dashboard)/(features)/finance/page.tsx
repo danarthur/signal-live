@@ -80,7 +80,7 @@ async function FinanceDashboard() {
   if (!data) {
     return (
       <LiquidPanel className="p-8 text-center">
-        <h2 className="text-xl font-light text-ink mb-2">Finance Dashboard</h2>
+        <h2 className="text-xl font-light text-ink mb-2">Finance</h2>
         <p className="text-ink-muted text-sm">
           Unable to load financial data. Please check your database connection.
         </p>

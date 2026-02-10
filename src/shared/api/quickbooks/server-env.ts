@@ -25,7 +25,7 @@ function getKey(): Buffer {
       'QBO_TOKEN_ENCRYPTION_KEY must be set (min 16 chars) for token encryption'
     );
   }
-  const salt = process.env.QBO_TOKEN_ENCRYPTION_SALT || 'danielos-qbo-default-salt';
+  const salt = process.env.QBO_TOKEN_ENCRYPTION_SALT || 'signal-qbo-default-salt';
   return scryptSync(raw, salt, KEY_LEN);
 }
 

@@ -171,7 +171,7 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
     const optimisticGig = {
       id: tempId,
       title: title.trim() || null,
-      status: 'inquiry' as const,
+      status: 'inquiry' as const, // maps to lifecycle_status 'lead' on server
       event_date: eventDate || null,
       location: locationStr.trim() || null,
       client_name: clientName.trim() || null,
@@ -189,7 +189,7 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
       const result = await createGig({
         title: title.trim(),
         eventDate: eventStartAt ?? (eventDate || null),
-        status: 'inquiry',
+        status: 'inquiry', // server maps to lifecycle_status 'lead'
         location: locationStr.trim() || null,
         clientName: clientName.trim() || null,
         venueId: (selectedVenue?.id && selectedVenue.id.length > 0) ? selectedVenue.id : null,
@@ -224,7 +224,7 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto overflow-x-hidden">
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-obsidian/40 backdrop-blur-sm"
         onClick={onClose}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
         role="button"

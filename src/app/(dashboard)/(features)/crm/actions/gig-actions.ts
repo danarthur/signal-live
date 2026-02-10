@@ -5,7 +5,19 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getActiveWorkspaceId } from '@/shared/lib/workspace';
 
-const createGigSchema = z.object({
+/** Map legacy CRM status to event lifecycle_status (unified schema). */
+const LEGACY_STATUS_TO_LIFECYCLE: Record<string, 'lead' | 'tentative' | 'confirmed' | 'production' | 'live' | 'archived' | 'cancelled'> = {
+  inquiry: 'lead',
+  proposal: 'lead',
+  contract_sent: 'tentative',
+  hold: 'tentative',
+  confirmed: 'confirmed',
+  run_of_show: 'production',
+  cancelled: 'cancelled',
+  archived: 'archived',
+};
+
+const createLeadSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
   eventDate: z.string().nullable().optional(),
   status: z.enum(['inquiry', 'proposal', 'contract_sent', 'hold', 'confirmed', 'run_of_show', 'cancelled', 'archived']).default('inquiry'),
@@ -20,20 +32,18 @@ const createGigSchema = z.object({
   occurrenceType: z.enum(['single', 'recurring', 'multi_day']).optional(),
 });
 
-export type CreateGigInput = z.infer<typeof createGigSchema>;
-
+export type CreateGigInput = z.infer<typeof createLeadSchema>;
 export type CreateGigResult =
   | { success: true; gigId: string }
   | { success: false; error: string };
 
 /**
- * Creates a new gig in the active workspace.
- * workspace_id is derived server-side – never trusted from the client.
- * DB trigger sync_gig_to_event will automatically create the corresponding event.
+ * Creates a new event (CRM lead) in the active workspace.
+ * Uses unified events table with lifecycle_status = 'lead' (or mapped from legacy status).
  */
 export async function createGig(input: CreateGigInput): Promise<CreateGigResult> {
   try {
-    const parsed = createGigSchema.safeParse(input);
+    const parsed = createLeadSchema.safeParse(input);
     if (!parsed.success) {
       const msg = parsed.error.flatten().fieldErrors.title?.[0] ?? parsed.error.message;
       return { success: false, error: msg };
@@ -47,35 +57,32 @@ export async function createGig(input: CreateGigInput): Promise<CreateGigResult>
       };
     }
 
-    const { title, eventDate, status, location, clientName, venueId, organizationId, mainContactId, eventStartAt, eventEndAt, isRecurring, occurrenceType } = parsed.data;
+    const { title, eventDate, status, location, clientName, organizationId, eventStartAt, eventEndAt } = parsed.data;
+    const lifecycleStatus = LEGACY_STATUS_TO_LIFECYCLE[status] ?? 'lead';
 
     const supabase = await createClient();
 
-    const insertData: Record<string, unknown> = {
-      workspace_id: workspaceId,
-      title: title.trim(),
-      event_date: eventDate ?? null,
-      status,
-      location: location?.trim() ?? null,
-      client_name: clientName?.trim() ?? null,
-      venue_id: venueId ?? null,
-      organization_id: organizationId ?? null,
-      main_contact_id: mainContactId ?? null,
-    };
+    const startsAt = eventStartAt ?? (eventDate ? `${eventDate}T08:00:00.000Z` : new Date().toISOString());
+    const endsAt = eventEndAt ?? (eventDate ? `${eventDate}T18:00:00.000Z` : new Date(Date.now() + 10 * 60 * 60 * 1000).toISOString());
 
-    if (eventStartAt != null) insertData.event_start_at = eventStartAt;
-    if (eventEndAt != null) insertData.event_end_at = eventEndAt;
-    if (isRecurring != null) insertData.is_recurring = isRecurring;
-    if (occurrenceType != null) insertData.occurrence_type = occurrenceType;
-
-    const { data: gig, error } = await supabase
-      .from('gigs')
-      .insert(insertData as Record<string, never>)
+    const { data: event, error } = await supabase
+      .from('events')
+      .insert({
+        workspace_id: workspaceId,
+        title: title.trim(),
+        starts_at: startsAt,
+        ends_at: endsAt,
+        status: 'planned',
+        lifecycle_status: lifecycleStatus,
+        location_name: location?.trim() ?? null,
+        client_id: organizationId ?? null,
+        actor: 'user',
+      })
       .select('id')
       .single();
 
     if (error) {
-      console.error('[CRM] createGig error:', error.message);
+      console.error('[CRM] createGig (create event) error:', error.message);
       return { success: false, error: error.message };
     }
 
@@ -83,9 +90,9 @@ export async function createGig(input: CreateGigInput): Promise<CreateGigResult>
     revalidatePath('/');
     revalidatePath('/calendar');
 
-    return { success: true, gigId: gig.id };
+    return { success: true, gigId: event.id };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to create gig';
+    const message = err instanceof Error ? err.message : 'Failed to create lead';
     console.error('[CRM] createGig unexpected:', err);
     return { success: false, error: message };
   }

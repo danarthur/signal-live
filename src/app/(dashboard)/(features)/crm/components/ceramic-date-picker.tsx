@@ -8,6 +8,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, AlertCircle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
+/** Parse "yyyy-MM-dd" as local date. new Date("yyyy-MM-dd") is UTC midnight and shifts to previous day in western timezones. */
+function parseLocalDateString(dateStr: string): Date {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return new Date(dateStr);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 interface CeramicDatePickerProps {
   value: string;
   onChange: (date: string) => void;
@@ -31,15 +38,15 @@ export function CeramicDatePicker({
 }: CeramicDatePickerProps) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Date | undefined>(
-    value ? new Date(value) : undefined
+    value ? parseLocalDateString(value) : undefined
   );
   const ref = useRef<HTMLDivElement>(null);
   const overlayContentRef = useRef<HTMLDivElement>(null);
   const today = startOfDay(new Date());
-  const isPastDate = value ? isBefore(new Date(value), today) : false;
+  const isPastDate = value ? isBefore(parseLocalDateString(value), today) : false;
 
   useEffect(() => {
-    if (value) setSelected(new Date(value));
+    if (value) setSelected(parseLocalDateString(value));
     else setSelected(undefined);
   }, [value]);
 
@@ -72,10 +79,10 @@ export function CeramicDatePicker({
 
   const calendarContent = (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
+      initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 200, damping: 26 }}
       className="overflow-hidden rounded-3xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] backdrop-blur-xl"
     >
       <DayPicker
@@ -120,7 +127,7 @@ export function CeramicDatePicker({
           setOpen((o) => !o);
         }}
         className={cn(
-          'flex w-full min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-all',
+          'flex w-full min-w-[11rem] max-w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors duration-200',
           isPastDate
             ? 'border-amber-500/60 bg-amber-500/5 text-ink'
             : 'border-[var(--glass-border)] bg-[var(--glass-bg)] text-ink hover:bg-[var(--glass-bg-hover)]',
@@ -129,7 +136,7 @@ export function CeramicDatePicker({
       >
         <Calendar size={16} className={cn('shrink-0', isPastDate ? 'text-amber-600' : 'text-ink-muted')} strokeWidth={1.5} />
         <span className={cn('truncate min-w-0', value ? 'text-ink' : 'text-ink-muted/70')}>
-          {value ? format(new Date(value), 'PPP') : placeholder}
+          {value ? format(parseLocalDateString(value), 'PPP') : placeholder}
         </span>
       </button>
 
@@ -148,8 +155,8 @@ export function CeramicDatePicker({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-xl"
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-obsidian/40 backdrop-blur-xl"
                 onClick={() => setOpen(false)}
               >
                 <div
@@ -164,16 +171,14 @@ export function CeramicDatePicker({
             )
           ) : (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="overflow-hidden"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+              className="absolute left-0 right-0 top-full z-50 mt-1.5 min-w-[320px]"
             >
-              <div className="mt-2 w-full flex justify-center">
-                <div className="w-full max-w-[320px]">
-                  {calendarContent}
-                </div>
+              <div className="w-full max-w-[320px]">
+                {calendarContent}
               </div>
             </motion.div>
           )

@@ -1,9 +1,6 @@
 /**
  * Calendar feature - Server Action: fetch events in range
- * Unified: fetches from both events and gigs. Events table is synced from gigs via DB trigger.
- * Fallback: gigs without events are converted to CalendarEvents so nothing is lost.
- * Overlap: (starts_at <= rangeEnd) AND (ends_at >= rangeStart) for events;
- * event_date within range for gigs.
+ * Fetches from unified events table. Overlap: (starts_at <= rangeEnd) AND (ends_at >= rangeStart).
  * @module features/calendar/api/get-events
  */
 
@@ -29,52 +26,11 @@ function parseEventStatus(value: string | null): EventStatus {
   return 'planned';
 }
 
-/** Map gig status to event_status (same logic as DB trigger). */
-function gigStatusToEventStatus(gigStatus: string | null): EventStatus {
-  switch (gigStatus) {
-    case 'confirmed':
-    case 'run_of_show':
-      return 'confirmed';
-    case 'cancelled':
-      return 'cancelled';
-    case 'hold':
-      return 'hold';
-    default:
-      return 'planned';
-  }
-}
-
-/** Build starts_at from event_date (08:00 UTC). */
-function startsAtFromEventDate(eventDate: string | null): string {
-  if (!eventDate) {
-    const d = new Date();
-    d.setUTCHours(8, 0, 0, 0);
-    return d.toISOString();
-  }
-  const d = new Date(eventDate);
-  if (Number.isNaN(d.getTime())) return new Date().toISOString();
-  d.setUTCHours(8, 0, 0, 0);
-  return d.toISOString();
-}
-
-/** Build ends_at from event_date (18:00 UTC). */
-function endsAtFromEventDate(eventDate: string | null): string {
-  if (!eventDate) {
-    const d = new Date();
-    d.setUTCHours(18, 0, 0, 0);
-    return d.toISOString();
-  }
-  const d = new Date(eventDate);
-  if (Number.isNaN(d.getTime())) return new Date().toISOString();
-  d.setUTCHours(18, 0, 0, 0);
-  return d.toISOString();
-}
-
 // =============================================================================
 // Raw row from DB (events + joined projects.name)
 // =============================================================================
 
-/** Events row + joined projects.name. gig_id from events; no gig join to avoid schema cache issues. */
+/** Events row (unified table). */
 interface EventsRow {
   id: string;
   title: string | null;
@@ -83,19 +39,8 @@ interface EventsRow {
   status: string | null;
   location_name: string | null;
   workspace_id: string;
-  gig_id?: string | null;
   projects?: { name: string } | { name: string }[] | null;
   project?: { name: string } | null;
-}
-
-interface GigRow {
-  id: string;
-  title: string | null;
-  status: string | null;
-  event_date: string | null;
-  workspace_id: string;
-  location?: string | null;
-  client_name?: string | null;
 }
 
 function projectName(row: EventsRow): string | null {
@@ -120,28 +65,8 @@ function toCalendarEvent(row: EventsRow): CalendarEvent {
     location: row.location_name ?? null,
     color,
     workspaceId: row.workspace_id ?? '',
-    gigId: row.gig_id ?? null,
+    gigId: null,
     clientName: null,
-  };
-}
-
-function gigToCalendarEvent(gig: GigRow): CalendarEvent {
-  const status = gigStatusToEventStatus(gig.status);
-  const color = getEventColor(status);
-  const start = startsAtFromEventDate(gig.event_date ?? null);
-  const end = endsAtFromEventDate(gig.event_date ?? null);
-  return {
-    id: `gig:${gig.id}`,
-    title: gig.title ?? 'Untitled Production',
-    start,
-    end,
-    status,
-    projectTitle: null,
-    location: gig.location ?? null,
-    color,
-    workspaceId: gig.workspace_id ?? '',
-    gigId: gig.id,
-    clientName: gig.client_name ?? null,
   };
 }
 
@@ -151,9 +76,7 @@ function gigToCalendarEvent(gig: GigRow): CalendarEvent {
 
 /**
  * Fetches calendar events overlapping the given range.
- * Unified: events from public.events + gigs without events (fallback).
- * Overlap: (starts_at <= rangeEnd) AND (ends_at >= rangeStart) for events;
- * event_date between range dates for gigs.
+ * Fetches calendar events from public.events (unified table).
  * Security: workspace_id enforced; RLS must scope by workspace.
  */
 export async function getCalendarEvents(
@@ -174,52 +97,25 @@ export async function getCalendarEvents(
       return [];
     }
 
-    // 1. Fetch events from events table (minimal select to avoid join/column issues)
+    // Fetch events from unified events table
     const { data: eventRowsRaw, error } = await supabase
       .from('events')
-      .select('id, title, starts_at, ends_at, status, location_name, workspace_id, gig_id')
+      .select('id, title, starts_at, ends_at, status, location_name, workspace_id')
       .eq('workspace_id', workspaceId)
       .lte('starts_at', end)
       .gte('ends_at', start)
-      .order('starts_at', { ascending: true });
+      .order('starts_at', { ascending: true })
+      .limit(5000);
 
-    let eventRows: unknown[] = [];
     if (error) {
       console.error('[calendar] getCalendarEvents events error:', error.message);
-    } else {
-      eventRows = (eventRowsRaw ?? []).map((r) => ({ ...r, projects: null, project: null }));
+      return [];
     }
 
-    const result: CalendarEvent[] = [];
-    const gigIdsWithEvents = new Set<string>();
-
-    for (const row of eventRows) {
-      try {
-        const ev = toCalendarEvent(row as unknown as EventsRow);
-        result.push(ev);
-        if (ev.gigId) gigIdsWithEvents.add(ev.gigId);
-      } catch (rowErr) {
-        console.warn('[calendar] Skipping malformed event row:', rowErr);
-      }
-    }
-
-    // 2. Fetch ALL gigs for workspace (same as Production Queue) – no date filter
-    //    so we never miss any; MonthGrid filters by day for display
-    const { data: gigs } = await supabase
-      .from('gigs')
-      .select('id, title, status, event_date, workspace_id, location, client_name')
-      .eq('workspace_id', workspaceId)
-      .neq('status', 'archived')
-      .order('event_date', { ascending: true, nullsFirst: false });
-
-    for (const gig of (gigs ?? []) as GigRow[]) {
-      if (gigIdsWithEvents.has(gig.id)) continue;
-      try {
-        result.push(gigToCalendarEvent(gig));
-      } catch (gigErr) {
-        console.warn('[calendar] Skipping malformed gig row:', gigErr);
-      }
-    }
+    const result: CalendarEvent[] = (eventRowsRaw ?? []).map((r) => {
+      const row = { ...r, projects: null, project: null } as unknown as EventsRow;
+      return toCalendarEvent(row);
+    });
 
     result.sort((a, b) => a.start.localeCompare(b.start));
     return result;

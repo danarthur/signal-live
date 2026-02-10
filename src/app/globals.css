@@ -1,395 +1,205 @@
 @import "tailwindcss";
 
-:root {
-  /* === LIGHT MODE (Morning Ceramic) === */
-  --background: #FDFCF8;       /* Rice Paper */
-  --foreground: #4A453E;       /* Sumi Ink */
-  
-  /* Glass Physics - Light Mode */
-  --glass-bg: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.9) 0%,
-    rgba(255, 255, 255, 0.55) 55%,
-    rgba(245, 242, 236, 0.4) 100%
-  );
-  --glass-bg-hover: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(255, 255, 255, 0.75) 55%,
-    rgba(245, 242, 236, 0.55) 100%
-  );
-  
-  --glass-border: rgba(74, 69, 62, 0.24);
-  --glass-border-hover: rgba(74, 69, 62, 0.45);
-  
-  --glass-shadow: 
-    0 10px 24px -10px rgba(74, 69, 62, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  --glass-shadow-hover:
-    0 16px 36px -12px rgba(74, 69, 62, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  --glass-shadow-nested:
-    0 6px 16px -10px rgba(74, 69, 62, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  --glass-shadow-nested-hover:
-    0 12px 24px -10px rgba(74, 69, 62, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-
-  /* Accents */
-  --accent-primary: #D4C5B0;
-  --accent-secondary: #E5E2DC;
-  --sidebar-bg: rgba(253, 252, 248, 0.9);
-
-  /* Supporting Tones */
-  --ink-muted: color-mix(in oklab, var(--foreground) 55%, var(--background));
-  --muted: color-mix(in oklab, var(--accent-secondary) 70%, var(--background));
-  --muted-foreground: color-mix(in oklab, var(--foreground) 50%, var(--background));
-  --accent-sage: color-mix(in oklab, var(--accent-secondary) 60%, var(--background));
-  --accent-clay: color-mix(in oklab, var(--accent-primary) 55%, var(--background));
-  --walnut: color-mix(in oklab, var(--foreground) 70%, var(--background));
-  --accent: var(--accent-primary);
-  --accent-foreground: var(--foreground);
-  --input: var(--glass-border);
-  --ring: var(--glass-border-hover);
-
-  /* Today indicator: warm tint + ring, distinct from muted other-month (gray) */
-  --today-bg: color-mix(in oklab, var(--accent-primary) 24%, transparent);
-  --today-ring: color-mix(in oklab, var(--walnut) 72%, transparent);
-}
-
-.dark {
-  /* === DARK MODE (Evening Obsidian) === */
-  --background: #141210;
-  --foreground: #E7E5E4;
-  
-  /* Glass Physics - Dark Mode */
-  --glass-bg: linear-gradient(145deg, rgba(30, 27, 24, 0.7) 0%, rgba(30, 27, 24, 0.4) 100%);
-  --glass-bg-hover: linear-gradient(145deg, rgba(40, 36, 32, 0.8) 0%, rgba(40, 36, 32, 0.6) 100%);
-  
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-hover: rgba(255, 255, 255, 0.25);
-  --glass-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
-  --glass-shadow-hover: 0 26px 60px -14px rgba(0, 0, 0, 0.75);
-  --glass-shadow-nested: 0 14px 32px -14px rgba(0, 0, 0, 0.6);
-  --glass-shadow-nested-hover: 0 20px 44px -16px rgba(0, 0, 0, 0.7);
-
-  /* Accents */
-  --accent-primary: #57534E;
-  --accent-secondary: #292524;
-  --sidebar-bg: rgba(20, 18, 16, 0.85);
-
-  /* Supporting Tones */
-  --ink-muted: color-mix(in oklab, var(--foreground) 60%, var(--background));
-  --muted: color-mix(in oklab, var(--accent-secondary) 70%, var(--background));
-  --muted-foreground: color-mix(in oklab, var(--foreground) 55%, var(--background));
-  --accent-sage: color-mix(in oklab, var(--accent-secondary) 70%, var(--background));
-  --accent-clay: color-mix(in oklab, var(--accent-primary) 60%, var(--background));
-  --walnut: color-mix(in oklab, var(--foreground) 60%, var(--background));
-  --accent: var(--accent-secondary);
-  --accent-foreground: var(--foreground);
-  --input: var(--glass-border);
-  --ring: var(--glass-border-hover);
-
-  /* Today indicator: warm tint + ring */
-  --today-bg: color-mix(in oklab, var(--accent-primary) 20%, transparent);
-  --today-ring: color-mix(in oklab, var(--walnut) 60%, transparent);
-}
-
 @theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-canvas: var(--background);
-  --color-ink: var(--foreground);
-  --color-ink-muted: var(--ink-muted);
-  --color-stone: var(--accent-secondary);
-  --color-silk: var(--accent-primary);
-  --color-walnut: var(--walnut);
-  --color-accent-sage: var(--accent-sage);
-  --color-accent-clay: var(--accent-clay);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  /* 1. COLOR PALETTE (OKLCH) 
+     We define these as CSS variables so they can be animated 
+     and used in the alpha-channel syntax (e.g., bg-obsidian/50).
+  */
+  --color-obsidian: oklch(0.15 0 0);       /* The Void (Not Black) */
+  --color-ceramic: oklch(0.98 0 0);        /* The Ink (Not White) */
+  --color-mercury: oklch(1 0 0 / 0.08);    /* The Edge (Reflective) */
   
-  --font-sans: var(--font-geist-sans), "Outfit", sans-serif;
+  --color-neon-blue: oklch(0.70 0.15 250); /* The "Kiki" Signal */
+  --color-neon-rose: oklch(0.65 0.20 350); /* Alert Signal */
+  
+  --color-glass-surface: oklch(0.20 0 0 / 0.4);
+  --color-glass-highlight: oklch(1 0 0 / 0.05);
 
-  /* Animation Physics */
-  --animate-float: float 6s ease-in-out infinite;
+  /* Semantic aliases (OKLCH) */
+  --color-ink: oklch(0.98 0 0);            /* Primary text = Ceramic */
+  --color-ink-muted: oklch(0.98 0 0 / 0.6);
+  --color-canvas: oklch(0.15 0 0);
+  --color-silk: oklch(0.70 0.15 250);      /* Accent = Neon Blue */
+  --color-walnut: oklch(0.55 0.02 60);     /* Warm secondary */
+
+  /* SEMANTIC SIGNALS (The "Lights in the Void")
+     L (0.75) and C (~0.18) locked; only H (Hue) rotates.
+     Same optical weight = no painful vibration on dark.
+  */
+  --color-signal-success: oklch(0.75 0.18 145); /* Emerald Laser */
+  --color-signal-warning: oklch(0.75 0.16 85);  /* Molten Gold */
+  --color-signal-error: oklch(0.70 0.18 20);    /* Infrared Ruby */
+  --color-signal-info: oklch(0.75 0.15 240);   /* Hologram Blue */
+
+  /* SURFACE VARIANTS (Tinted Glass for badges / soft backgrounds) */
+  --color-surface-success: oklch(0.25 0.1 145 / 0.2);
+  --color-surface-warning: oklch(0.25 0.1 85 / 0.2);
+  --color-surface-error: oklch(0.25 0.1 20 / 0.2);
+
+  /* 2. FONTS (Next.js Geist) 
+     Ensure these match your layout.tsx variable names 
+  */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/* Legacy variables for components still using var(--…) — OKLCH-backed */
+:root {
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.98 0 0);
+  --sidebar-bg: oklch(0.15 0 0 / 0.92);
+  --glass-border: oklch(1 0 0 / 0.08);
+  --glass-border-hover: oklch(1 0 0 / 0.15);
+  --glass-bg: oklch(0.20 0 0 / 0.4);
+  --glass-bg-hover: oklch(0.22 0 0 / 0.5);
+  --glass-shadow: 0 4px 24px -1px oklch(0 0 0 / 0.2);
+  --glass-shadow-hover: 0 20px 40px -4px oklch(0 0 0 / 0.4);
+  --ring: oklch(0.70 0.15 250 / 0.4);
+}
+
+/* 3. BASE LAYER 
+   Setting the stage for the "Post-Enterprise" environment.
+*/
 @layer base {
   body {
-    @apply bg-canvas text-ink antialiased selection:bg-silk/30 transition-colors duration-500;
+    background-color: var(--color-obsidian);
+    color: var(--color-ceramic);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    
+    /* The "Grain" Texture Overlay */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    background-blend-mode: overlay;
+  }
+
+  /* Headings feel "tight" and "heavy" */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.03em; /* tracking-tight */
+    font-weight: 500;
   }
 }
 
-/* Cinematic Ambient Noise */
-.grain-overlay {
-  opacity: 0.03;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+/* 4. UTILITIES LAYER (The Physics Engine) 
+   These are your "Liquid Ceramic" components.
+*/
+@layer utilities {
+  
+  /* The "Liquid Card" - The atom of your UI */
+  .liquid-card {
+    @apply relative overflow-hidden rounded-3xl transition-all duration-300;
+    
+    /* Material */
+    background: var(--color-glass-surface);
+    backdrop-filter: blur(24px) saturate(140%);
+    
+    /* Border (The Mercury Rim) */
+    border: 1px solid var(--color-mercury);
+    
+    /* Shadow (Depth) */
+    box-shadow: 
+      0 4px 24px -1px oklch(0 0 0 / 0.2), 
+      inset 0 1px 0 0 var(--color-glass-highlight);
+  }
+
+  /* Alias: same physics as liquid-card for panels/blades */
+  .glass-panel {
+    @apply relative overflow-hidden rounded-3xl transition-all duration-300;
+    background: var(--color-glass-surface);
+    backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid var(--color-mercury);
+    box-shadow: 
+      0 4px 24px -1px oklch(0 0 0 / 0.2), 
+      inset 0 1px 0 0 var(--color-glass-highlight);
+  }
+  .glass-panel:hover {
+    background: oklch(0.22 0 0 / 0.5);
+    border-color: oklch(1 0 0 / 0.15);
+    transform: translateY(-2px) scale(1.002);
+    box-shadow: 
+      0 20px 40px -4px oklch(0 0 0 / 0.4),
+      inset 0 1px 0 0 oklch(1 0 0 / 0.1);
+  }
+
+  /* Hover State for Interactive Cards */
+  .liquid-card:hover {
+    background: oklch(0.22 0 0 / 0.5);
+    border-color: oklch(1 0 0 / 0.15);
+    transform: translateY(-2px) scale(1.002);
+    box-shadow: 
+      0 20px 40px -4px oklch(0 0 0 / 0.4),
+      inset 0 1px 0 0 oklch(1 0 0 / 0.1);
+  }
+
+  /* The "Neon Text" - For key metrics or active states */
+  .text-neon {
+    color: var(--color-neon-blue);
+    text-shadow: 0 0 20px oklch(0.70 0.15 250 / 0.5);
+  }
+  
+  /* Utility to center content in a Bento Cell */
+  .bento-center {
+    @apply flex flex-col items-center justify-center h-full w-full;
+  }
+
+  /* Legacy aliases: liquid-panel = same physics as liquid-card (no @apply) */
+  .liquid-panel {
+    @apply relative overflow-hidden rounded-3xl transition-all duration-300;
+    background: var(--color-glass-surface);
+    backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid var(--color-mercury);
+    box-shadow:
+      0 4px 24px -1px oklch(0 0 0 / 0.2),
+      inset 0 1px 0 0 var(--color-glass-highlight);
+  }
+  .liquid-panel:hover {
+    background: oklch(0.22 0 0 / 0.5);
+    border-color: oklch(1 0 0 / 0.15);
+    transform: translateY(-2px) scale(1.002);
+    box-shadow:
+      0 20px 40px -4px oklch(0 0 0 / 0.4),
+      inset 0 1px 0 0 oklch(1 0 0 / 0.1);
+  }
+  .liquid-panel-nested {
+    box-shadow: 0 6px 16px -10px oklch(0 0 0 / 0.25), inset 0 1px 0 0 oklch(1 0 0 / 0.04);
+  }
+  .liquid-panel-hover:hover {
+    background: oklch(0.22 0 0 / 0.5);
+    border-color: oklch(1 0 0 / 0.15);
+    transform: translateY(-2px) scale(1.002);
+    box-shadow:
+      0 20px 40px -4px oklch(0 0 0 / 0.4),
+      inset 0 1px 0 0 oklch(1 0 0 / 0.1);
+  }
+  .active-glass {
+    background: oklch(0.22 0 0 / 0.5);
+    border-color: oklch(1 0 0 / 0.15);
+    box-shadow:
+      0 4px 24px -1px oklch(0 0 0 / 0.2),
+      inset 0 1px 0 0 oklch(1 0 0 / 0.1);
+  }
 }
 
-/* =============================================================================
-   LIQUID CERAMIC – Client Portal levitation shadows (colors use site tokens)
-   ============================================================================= */
-
+/* Levitation shadows (OKLCH) */
 .liquid-levitation {
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.02),
-    0 20px 25px -5px rgba(0, 0, 0, 0.05);
+    0 4px 6px -1px oklch(0 0 0 / 0.08),
+    0 20px 25px -5px oklch(0 0 0 / 0.15);
 }
 .liquid-levitation-strong {
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.03),
-    0 20px 25px -5px rgba(0, 0, 0, 0.06),
-    0 40px 50px -12px rgba(0, 0, 0, 0.08);
+    0 4px 6px -1px oklch(0 0 0 / 0.1),
+    0 20px 25px -5px oklch(0 0 0 / 0.2),
+    0 40px 50px -12px oklch(0 0 0 / 0.25);
 }
-
-/* Sticky bar: shadow upward only so it doesn’t clip the pill below */
 .liquid-levitation-bar {
   box-shadow:
-    0 -4px 6px -1px rgba(0, 0, 0, 0.04),
-    0 -10px 20px -5px rgba(0, 0, 0, 0.06);
+    0 -4px 6px -1px oklch(0 0 0 / 0.1),
+    0 -10px 20px -5px oklch(0 0 0 / 0.15);
 }
 
-/* THE LIQUID PANEL COMPONENT CLASS */
-.liquid-panel {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  @apply rounded-3xl transition-all duration-300;
-}
-
-.liquid-panel-hover:hover {
-  background: var(--glass-bg-hover);
-  border-color: var(--glass-border-hover);
-  box-shadow: var(--glass-shadow-hover);
-  transform: translateY(-1px);
-}
-
-.liquid-panel-nested {
-  box-shadow: var(--glass-shadow-nested);
-}
-
-.liquid-panel-nested.liquid-panel-hover:hover {
-  box-shadow: var(--glass-shadow-nested-hover);
-}
-
-.active-glass {
-  box-shadow:
-    var(--glass-shadow),
-    inset 0 1px 0 color-mix(in oklab, var(--foreground) 20%, transparent);
-  border-color: var(--glass-border-hover);
-  background: var(--glass-bg-hover);
-}
-
-/* =============================================================================
-   LIQUID PILL – Liquid glass surface (cool, translucent)
-   Use for: Command Spine, floating panels, premium containers
-   ============================================================================= */
-.liquid-pill {
-  --liquid-pill-bg: oklch(1 0 0 / 0.55);
-  --liquid-pill-shadow-ambient: 0 4px 24px -2px oklch(0 0 0 / 0.06);
-  --liquid-pill-shadow-soft: 0 8px 40px -10px oklch(0 0 0 / 0.08);
-}
-.dark .liquid-pill {
-  --liquid-pill-bg: oklch(0.2 0 0 / 0.6);
-  --liquid-pill-shadow-ambient: 0 4px 24px -2px oklch(0 0 0 / 0.35);
-  --liquid-pill-shadow-soft: 0 8px 40px -10px oklch(0 0 0 / 0.2);
-}
-
-/* Ceramic DatePicker – dropdowns only, no labels or nav */
-.ceramic-calendar .rdp-caption_label,
-.ceramic-calendar [data-name="caption_label"] {
-  display: none;
-}
-
-/* Ceramic DatePicker – month and year selects, theme-matched */
-.ceramic-calendar select {
-  appearance: none;
-  -webkit-appearance: none;
-  border-radius: 0.75rem;
-  border: 1px solid var(--glass-border);
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
-  outline: none;
-  cursor: pointer;
-  box-shadow: var(--glass-shadow-nested);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.5rem center;
-  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
-}
-.ceramic-calendar select:hover {
-  border-color: var(--glass-border-hover);
-  background-color: var(--accent-secondary);
-  color: var(--foreground);
-}
-.ceramic-calendar select:focus {
-  border-color: var(--glass-border-hover);
-  box-shadow: 0 0 0 2px var(--ring);
-  color: var(--foreground);
-}
-
-/* Calendar event pills: legible text in dark mode (uses .dark from next-themes) */
-.dark .calendar-event-pill {
-  color: #fff;
-}
-
-/* Smart stack container: liquid glass to match site cards (no header bar) */
-.smart-group-container {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow-nested);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
-}
-.smart-group-container:hover {
-  border-color: var(--glass-border-hover);
-  background: var(--glass-bg-hover);
-  box-shadow: var(--glass-shadow-nested-hover);
-}
-
-/* Smart stack scroll: visible scrollbar when overflow, contained scroll */
-.smart-group-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
-}
-.smart-group-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-.smart-group-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.smart-group-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--foreground) 35%, transparent);
-  border-radius: 3px;
-}
-.smart-group-scroll::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklab, var(--foreground) 50%, transparent);
-}
-
-/* Command Spine (⌘K): Liquid Ceramic styling, above sidebar/blades */
-[cmdk-overlay],
-[data-cmdk-overlay] {
-  z-index: 9999 !important;
-  background: rgba(0, 0, 0, 0.2) !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-/* Command Spine: See-through like blade overlay (minimal tint + heavy blur = liquid) */
-[cmdk-dialog],
-[data-cmdk-dialog] {
-  z-index: 9999 !important;
-  position: fixed !important;
-  top: 8% !important;
-  left: 50% !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: translate(-50%, 0) !important;
-  width: 640px !important;
-  max-width: calc(100vw - 2rem) !important;
-  min-height: 380px !important;
-  max-height: min(85vh, 600px) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  /* Minimal tint so content behind shows through; blur does the "liquid" effect */
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    rgba(255, 255, 255, 0.06) 100%
-  ) !important;
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.35) !important;
-  box-shadow:
-    0 8px 32px -8px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset !important;
-  border-radius: 2rem;
-  overflow: hidden !important;
-}
-
-.dark [cmdk-dialog],
-.dark [data-cmdk-dialog] {
-  background: linear-gradient(
-    145deg,
-    rgba(30, 30, 32, 0.4) 0%,
-    rgba(30, 30, 32, 0.25) 50%,
-    rgba(30, 30, 32, 0.15) 100%
-  ) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow:
-    0 8px 32px -8px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
-}
-
-/* cmdk-root: the actual Command box (in case it's nested inside dialog) */
-[cmdk-root] {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* Command input: prevent font clipping */
-[cmdk-dialog] [cmdk-input],
-[cmdk-dialog] [data-cmdk-input],
-[data-cmdk-dialog] [cmdk-input],
-[data-cmdk-dialog] [data-cmdk-input],
-[cmdk-root] [cmdk-input],
-[cmdk-root] [data-cmdk-input] {
-  margin: 0 !important;
-  line-height: 1.5 !important;
-  min-height: 1.5em !important;
-  box-sizing: border-box !important;
-  overflow: visible !important;
-}
-
-/* Command items: prevent text clipping */
-[cmdk-item],
-[data-cmdk-item] {
-  line-height: 1.5 !important;
-  box-sizing: border-box !important;
-}
-
-/* Command list: fill available space, ensure all items visible */
-[cmdk-dialog] [cmdk-list],
-[cmdk-dialog] [data-cmdk-list],
-[data-cmdk-dialog] [cmdk-list],
-[data-cmdk-dialog] [data-cmdk-list],
-[cmdk-root] [cmdk-list],
-[cmdk-root] [data-cmdk-list] {
-  flex: 1 1 auto !important;
-  min-height: 260px !important;
-  max-height: 450px !important;
-  overflow-y: auto !important;
-}
-
-/* hello-pangea/dnd: keep drag clone on top and visible when dragging outside panels */
-[data-rbd-draggable-id] {
-  z-index: 9999 !important;
-  pointer-events: none;
-}
-[data-rbd-draggable-id] * {
-  pointer-events: none;
-}
-[data-rbd-drag-handle-draggable-id] {
-  pointer-events: auto;
+/* Ambient grain overlay (layout can use this over a fixed layer) */
+.grain-overlay {
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }

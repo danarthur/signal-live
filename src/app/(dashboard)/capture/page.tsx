@@ -58,7 +58,7 @@ export default function CapturePage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50 dark flex items-center justify-center p-4">
-      <Card className="bg-zinc-900 border-zinc-800 shadow-lg w-full max-w-2xl">
+      <Card className="liquid-card bg-zinc-900/80 border-mercury w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-zinc-100 text-2xl font-light">
             Capture
@@ -128,7 +128,7 @@ export default function CapturePage() {
               disabled={isSubmitting}
               className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700"
             >
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Locking...' : 'Lock'}
             </Button>
           </form>
         </CardContent>

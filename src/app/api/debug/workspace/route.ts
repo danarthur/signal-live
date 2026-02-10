@@ -39,54 +39,33 @@ export async function GET() {
 
     const myWorkspaceIds = new Set((memberships ?? []).map((m) => m.workspace_id as string));
 
-    // 1. What we SEE: counts in active workspace (RLS applies)
-    const [gigsInActiveRes, eventsInActiveRes] = await Promise.all([
-      supabase.from('gigs').select('id', { count: 'exact', head: true }).eq('workspace_id', activeWorkspaceId ?? ''),
-      supabase.from('events').select('id', { count: 'exact', head: true }).eq('workspace_id', activeWorkspaceId ?? ''),
-    ]);
+    // 1. What we SEE: counts in active workspace (RLS applies) – unified events only
+    const eventsInActiveRes = await supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', activeWorkspaceId ?? '');
 
-    // 2. Ghost Data: gigs/events in workspaces we're NOT a member of
-    // RLS hides these from the user client; use system client (bypasses RLS) to get true counts
+    // 2. Ghost Data: events in workspaces we're NOT a member of
     const system = getSystemClient();
-    const { data: gigsByWorkspace } = await system.from('gigs').select('workspace_id');
     const { data: eventsByWorkspace } = await system.from('events').select('workspace_id');
 
-    const gigWorkspaceCounts: Record<string, number> = {};
-    for (const g of gigsByWorkspace ?? []) {
-      const wid = (g as { workspace_id?: string }).workspace_id;
-      if (wid) gigWorkspaceCounts[wid] = (gigWorkspaceCounts[wid] ?? 0) + 1;
-    }
     const eventWorkspaceCounts: Record<string, number> = {};
     for (const e of eventsByWorkspace ?? []) {
       const wid = (e as { workspace_id?: string }).workspace_id;
       if (wid) eventWorkspaceCounts[wid] = (eventWorkspaceCounts[wid] ?? 0) + 1;
     }
 
-    const orphanGigWorkspaces = Object.keys(gigWorkspaceCounts).filter((wid) => !myWorkspaceIds.has(wid));
     const orphanEventWorkspaces = Object.keys(eventWorkspaceCounts).filter((wid) => !myWorkspaceIds.has(wid));
-
-    const ghostGigsCount = orphanGigWorkspaces.reduce((s, wid) => s + (gigWorkspaceCounts[wid] ?? 0), 0);
     const ghostEventsCount = orphanEventWorkspaces.reduce((s, wid) => s + (eventWorkspaceCounts[wid] ?? 0), 0);
-
-    // In-other-workspaces: data in workspaces we ARE a member of, but not the active one
-    const otherGigsCount = Object.keys(gigWorkspaceCounts)
-      .filter((wid) => myWorkspaceIds.has(wid) && wid !== activeWorkspaceId)
-      .reduce((s, wid) => s + (gigWorkspaceCounts[wid] ?? 0), 0);
     const otherEventsCount = Object.keys(eventWorkspaceCounts)
       .filter((wid) => myWorkspaceIds.has(wid) && wid !== activeWorkspaceId)
       .reduce((s, wid) => s + (eventWorkspaceCounts[wid] ?? 0), 0);
-
-    const drift = ghostGigsCount > 0 || ghostEventsCount > 0 || otherGigsCount > 0 || otherEventsCount > 0;
+    const drift = ghostEventsCount > 0 || otherEventsCount > 0;
 
     // Sample rows in active workspace
-    const { data: gigRows } = await supabase
-      .from('gigs')
-      .select('id, title, workspace_id, event_date')
-      .eq('workspace_id', activeWorkspaceId ?? '')
-      .limit(5);
     const { data: eventRows } = await supabase
       .from('events')
-      .select('id, title, workspace_id, gig_id, starts_at')
+      .select('id, title, workspace_id, starts_at')
       .eq('workspace_id', activeWorkspaceId ?? '')
       .limit(5);
 
@@ -100,11 +79,8 @@ export async function GET() {
         match: workspaceIdFromLib === workspaceIdFromSession,
       },
       counts: {
-        gigs_in_active_workspace: gigsInActiveRes.count ?? 0,
         events_in_active_workspace: eventsInActiveRes.count ?? 0,
-        gigs_in_other_my_workspaces: otherGigsCount,
         events_in_other_my_workspaces: otherEventsCount,
-        ghost_gigs: ghostGigsCount,
         ghost_events: ghostEventsCount,
         my_workspace_memberships: memberships?.length ?? 0,
       },
@@ -112,16 +88,13 @@ export async function GET() {
         drift,
         message: drift
           ? 'Data exists outside your active workspace context. See ghost_* and *_in_other_my_workspaces.'
-          : 'Context aligned – all visible gigs/events are in your active workspace.',
+          : 'Context aligned – all visible events are in your active workspace.',
       },
       ghost_detail: {
-        gig_workspace_ids: orphanGigWorkspaces,
         event_workspace_ids: orphanEventWorkspaces,
-        gig_workspace_counts: gigWorkspaceCounts,
         event_workspace_counts: eventWorkspaceCounts,
       },
       my_memberships: memberships ?? [],
-      sample_gigs: gigRows ?? [],
       sample_events: eventRows ?? [],
       hints: [
         'ghost_* = rows in workspaces you are NOT a member of (invisible to app).',

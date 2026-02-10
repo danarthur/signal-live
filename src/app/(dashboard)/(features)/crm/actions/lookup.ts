@@ -87,41 +87,7 @@ export async function getVenueSuggestions(
   const trimmed = query.trim();
   const pattern = trimmed.length >= 1 ? `%${trimmed}%` : '%';
 
-  // Heuristic 1: Org-scoped venues from past gigs (venue_id must exist after migration)
-  if (organizationId) {
-    const { data: gigs } = await supabase
-      .from('gigs')
-      .select('venue_id')
-      .eq('organization_id', organizationId)
-      .not('venue_id', 'is', null)
-      .limit(10);
-
-    const venueIds = [...new Set((gigs ?? []).map((g) => g.venue_id).filter(Boolean))] as string[];
-    if (venueIds.length > 0) {
-      const { data: venuesForOrg } = await supabase
-        .from('venues')
-        .select('id, name, address, city, state')
-        .in('id', venueIds)
-        .eq('workspace_id', workspaceId);
-
-      const fromGigs: VenueSuggestion[] = (venuesForOrg ?? []).map((v) => ({
-        type: 'venue' as const,
-        id: v.id,
-        name: v.name,
-        address: v.address ?? null,
-        city: v.city ?? null,
-        state: v.state ?? null,
-      }));
-
-      const filtered = trimmed
-        ? fromGigs.filter((v) =>
-            v.type === 'venue' && [v.name, v.address, v.city, v.state].some((x) => x?.toLowerCase().includes(trimmed.toLowerCase()))
-          )
-        : fromGigs;
-      if (filtered.length > 0) return filtered;
-    }
-  }
-
+  // Heuristic 1 (post-unification): Org-scoped venues from events not available (events have location_name, no venue_id).
   // Heuristic 2: General venue search
   const { data: venues } = await supabase
     .from('venues')

@@ -21,7 +21,7 @@ export function CommandCenter() {
     setErrorMessage('')
 
     try {
-      const response = await fetch('https://os.danielos.me/webhook/command', {
+      const response = await fetch(process.env.NEXT_PUBLIC_COMMAND_WEBHOOK || '/api/command', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

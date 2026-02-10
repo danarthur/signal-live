@@ -31,8 +31,8 @@ export function Sidebar() {
   };
 
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutGrid, href: '/' },
-    { id: 'brain', label: 'Brain', icon: MessageSquare, href: '/' },
+    { id: 'overview', label: 'Overview', icon: LayoutGrid, href: '/lobby' },
+    { id: 'brain', label: 'Brain', icon: MessageSquare, href: '/lobby' },
     { id: 'production', label: 'Production', icon: Calendar, href: '/crm' },
     { id: 'finance', label: 'Finance', icon: Wallet, href: '/finance' },
   ];
@@ -55,7 +55,7 @@ export function Sidebar() {
         <div className="mb-10 h-12 w-full flex items-center justify-center shrink-0">
         <div
           onClick={() => handleNavigation('overview', '/')}
-          className="w-10 h-10 rounded-xl bg-ink hover:scale-105 cursor-pointer transition-transform shadow-lg flex items-center justify-center"
+          className="w-10 h-10 rounded-xl bg-ink hover:scale-105 cursor-pointer transition-transform liquid-levitation flex items-center justify-center"
         >
           <div className="w-3 h-3 rounded-full bg-[var(--background)]" />
           </div>
@@ -99,7 +99,7 @@ export function Sidebar() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -4 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap shadow-xl z-[60]"
+                    className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
                   >
                     {item.label}
                   </motion.div>

@@ -40,7 +40,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ item, isLast }) => {
         {/* The Dot/Icon */}
         <div
           className={cn(
-            'relative z-10 w-8 h-8 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300 liquid-panel !rounded-full',
+            'relative z-10 w-8 h-8 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 liquid-panel !rounded-full',
             iconBg
           )}
         >

@@ -49,14 +49,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ viewState }) => {
               )}
             >
               {msg.role !== 'user' && (
-                <div className="liquid-panel !rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 shrink-0 shadow-sm text-xs font-serif font-bold text-ink">
+                <div className="liquid-panel !rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 shrink-0 text-xs font-serif font-bold text-ink">
                   A
                 </div>
               )}
 
               <div
                 className={cn(
-                  'max-w-[80%] p-5 rounded-2xl text-[15px] leading-relaxed font-sans shadow-sm relative overflow-hidden border border-transparent',
+                  'max-w-[80%] p-5 rounded-2xl text-[15px] leading-relaxed font-sans relative overflow-hidden border border-transparent',
                   msg.role === 'user'
                     ? 'bg-ink text-[var(--background)]'
                     : 'liquid-panel !rounded-2xl text-ink'

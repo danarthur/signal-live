@@ -39,7 +39,7 @@ export default function EnginePage() {
     <div className="min-h-screen pt-8 md:pt-16 pb-24 md:pb-8">
       <div className="w-full max-w-2xl mx-auto px-4">
         <div className="space-y-2 mb-8">
-          <h1 className="text-2xl font-light text-neutral-200">Settings</h1>
+          <h1 className="text-2xl font-light text-neutral-200">Kit</h1>
           <p className="text-muted text-sm">Configure your system preferences</p>
         </div>
 

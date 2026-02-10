@@ -13,6 +13,8 @@ import { LayoutGrid, Calendar, CalendarDays, MessageSquare, Wallet, Settings, Su
 import { useTheme } from "next-themes";
 import { useEffect, useState, useRef } from 'react';
 import { useSession } from '@/shared/ui/providers/SessionContext';
+import { useSystemHeart } from '@/shared/ui/providers/SystemHeartContext';
+import { LivingLogo } from '@/shared/ui/branding/living-logo';
 import { cn } from '@/shared/lib/utils';
 import { signOutAction } from '@/features/auth/smart-login';
 
@@ -29,6 +31,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { setViewState } = useSession();
+  const { status: systemStatus, setStatus: setSystemStatus } = useSystemHeart();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const [isMounted, setIsMounted] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -40,6 +43,12 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // When route settles, return System Heart to idle
+  useEffect(() => {
+    const t = setTimeout(() => setSystemStatus('idle'), 400);
+    return () => clearTimeout(t);
+  }, [pathname, setSystemStatus]);
 
   // Close account menu when clicking outside
   useEffect(() => {
@@ -72,15 +81,17 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
 
   const handleNavigation = (id: string, href: string) => {
     handleNavClick(id);
+    setSystemStatus('loading');
     router.push(href);
   };
 
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutGrid, href: '/' },
+    { id: 'overview', label: 'Overview', icon: LayoutGrid, href: '/lobby' },
     { id: 'brain', label: 'Brain', icon: MessageSquare, href: '/brain' },
     { id: 'calendar', label: 'Calendar', icon: CalendarDays, href: '/calendar' },
     { id: 'production', label: 'Production', icon: FolderKanban, href: '/crm' },
     { id: 'finance', label: 'Finance', icon: Wallet, href: '/finance' },
+    { id: 'settings', label: 'Kit', icon: Settings, href: '/settings' },
   ];
 
   const cycleTheme = () => {
@@ -140,7 +151,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -4 }}
                 transition={springConfig}
-                className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap shadow-xl z-[60]"
+                className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
               >
                 Account
               </motion.div>
@@ -206,7 +217,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                       transition-colors text-left"
                   >
                     <Settings className="w-4 h-4" />
-                    <span className="text-sm">Settings</span>
+                    <span className="text-sm">Kit</span>
                   </button>
                   
                   <form action={signOutAction}>
@@ -226,14 +237,24 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
           </AnimatePresence>
         </div>
 
-        {/* Logo / Brand */}
-        <div className="mb-6 h-12 w-full flex items-center justify-center shrink-0">
-          <div
-            onClick={() => handleNavigation('overview', '/')}
-            className="w-10 h-10 rounded-xl bg-ink hover:scale-105 cursor-pointer transition-transform shadow-lg flex items-center justify-center"
+        {/* Brand Block — System Heart + Logotype */}
+        <div className="mb-6 w-full shrink-0 px-3 py-5 select-none">
+          <button
+            type="button"
+            onClick={() => handleNavigation('overview', '/lobby')}
+            className="flex flex-col items-center gap-2 w-full rounded-xl p-2 hover:bg-[var(--glass-bg-hover)] cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-neon-blue)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sidebar-bg)]"
+            aria-label="Signal home"
           >
-            <div className="w-3 h-3 rounded-full bg-[var(--background)]" />
-          </div>
+            <LivingLogo size="sm" status={systemStatus} />
+            <div className="flex flex-col items-center">
+              <span className="text-lg font-bold tracking-tighter leading-none text-ceramic">
+                Signal
+              </span>
+              <span className="text-[10px] font-mono font-medium text-ink-muted uppercase tracking-widest">
+                Live OS
+              </span>
+            </div>
+          </button>
         </div>
 
         {/* Navigation */}
@@ -241,7 +262,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.id === 'overview' && pathname === '/');
+              (item.id === 'overview' && pathname === '/lobby');
 
             return (
               <Link
@@ -276,7 +297,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -4 }}
                       transition={springConfig}
-                      className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap shadow-xl z-[60]"
+                      className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
                     >
                       {item.label}
                     </motion.div>
@@ -314,7 +335,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -4 }}
                   transition={springConfig}
-                  className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap shadow-xl z-[60]"
+                  className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
                 >
                   {!isMounted ? 'Theme' : theme === 'system' ? 'System' : resolvedTheme === 'light' ? 'Light' : 'Dark'}
                 </motion.div>
@@ -342,9 +363,9 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -4 }}
                   transition={springConfig}
-                  className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap shadow-xl z-[60]"
+                  className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
                 >
-                  Settings
+                  Kit
                 </motion.div>
               )}
             </AnimatePresence>

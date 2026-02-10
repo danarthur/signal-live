@@ -39,9 +39,9 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const storage = useMemo(
     () => ({
-      currentSessionKey: 'danielos.currentSessionId',
-      sessionsKey: 'danielos.sessions',
-      messagesKey: (id: string) => `danielos.messages.${id}`,
+      currentSessionKey: 'signal.currentSessionId',
+      sessionsKey: 'signal.sessions',
+      messagesKey: (id: string) => `signal.messages.${id}`,
     }),
     []
   );
@@ -189,7 +189,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
 
     try {
-      const WEBHOOK_URL = 'https://n8n.danielos.me/webhook/arthur-voice';
+      const WEBHOOK_URL = process.env.NEXT_PUBLIC_ARTHUR_VOICE_WEBHOOK || '';
+      if (!WEBHOOK_URL) {
+        addMessage('assistant', 'Voice assistant is not configured. Set NEXT_PUBLIC_ARTHUR_VOICE_WEBHOOK.');
+        setIsLoading(false);
+        return;
+      }
 
       let response: Response;
       if (isVoice || hasFile) {

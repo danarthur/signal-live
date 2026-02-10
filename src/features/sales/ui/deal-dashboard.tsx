@@ -33,7 +33,7 @@ export function DealDashboard({ data, className }: DealDashboardProps) {
         {/* Left: Proposal Builder */}
         <div className="min-h-0">
           <ProposalBuilder
-            gigId={gig.id}
+            eventId={gig.id}
             workspaceId={gig.workspaceId}
             initialProposal={data.activeProposal}
             clientEmail={gig.clientEmail}

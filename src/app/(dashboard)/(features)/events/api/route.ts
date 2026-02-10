@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getActiveWorkspaceId } from '@/shared/lib/workspace';
 import { getSession } from '@/shared/lib/auth/session';
 import { getSystemClient } from '@/shared/api/supabase/system';
 import type { Database } from '@/types/supabase';
@@ -16,8 +17,7 @@ type EventsRow = Database['public']['Tables']['events']['Row'];
 
 export async function GET() {
   try {
-    const session = await getSession();
-    const workspaceId = session.workspace.id;
+    const workspaceId = (await getActiveWorkspaceId()) ?? (await getSession()).workspace.id;
     const supabase = getSystemClient();
 
     const { data: eventsData, error: eventsError } = await supabase
@@ -30,7 +30,10 @@ export async function GET() {
 
     if (eventsError) {
       console.error('❌ Events API:', eventsError.message);
-      return NextResponse.json([]);
+      return NextResponse.json(
+        { error: eventsError.message },
+        { status: 500 }
+      );
     }
 
     const rows = (eventsData ?? []) as EventsRow[];

@@ -248,7 +248,7 @@ export function CalendarShell({ events, initialView, initialDate }: CalendarShel
               createPortal(
                 <div
                   ref={filterDropdownRef}
-                  className="fixed z-[200] w-56 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]/95 backdrop-blur-xl shadow-lg liquid-panel-nested p-3"
+                  className="fixed z-[200] w-56 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]/95 backdrop-blur-xl liquid-panel-nested p-3"
                   style={{ top: filterPosition.top, left: filterPosition.left }}
                   role="dialog"
                   aria-label="Filter events by status"

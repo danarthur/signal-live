@@ -7,8 +7,8 @@
 import { SmartLoginForm } from '@/features/auth/smart-login';
 
 export const metadata = {
-  title: 'Welcome Back | DanielOS',
-  description: 'Sign in to your DanielOS workspace',
+  title: 'Welcome Back | Signal',
+  description: 'Sign in to your Signal workspace',
 };
 
 interface LoginPageProps {

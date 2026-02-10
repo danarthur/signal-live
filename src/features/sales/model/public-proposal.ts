@@ -5,11 +5,14 @@
 
 import type { Proposal, ProposalItem } from '@/types/supabase';
 
-export interface PublicProposalGig {
+/** @deprecated Use PublicProposalEvent. */
+export type PublicProposalGig = PublicProposalEvent;
+
+export interface PublicProposalEvent {
   id: string;
   title: string;
   clientName: string | null;
-  eventDate: string | null;
+  startsAt: string | null;
 }
 
 export interface PublicProposalWorkspace {
@@ -24,7 +27,7 @@ export interface PublicProposalItem extends ProposalItem {
 
 export interface PublicProposalDTO {
   proposal: Proposal;
-  gig: PublicProposalGig;
+  event: PublicProposalEvent;
   workspace: PublicProposalWorkspace;
   items: PublicProposalItem[];
   total: number;

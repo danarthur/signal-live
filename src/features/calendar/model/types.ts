@@ -50,7 +50,7 @@ export interface CalendarEvent {
   /** Derived color from status */
   color: CalendarEventColor;
   workspaceId: string;
-  /** When event is linked to a gig (events.gig_id). */
+  /** @deprecated Unification: use event id; kept for backward compat. */
   gigId: string | null;
   /** From gigs.client_name or clients.name when linked to a gig; use as subtitle in UI. */
   clientName: string | null;

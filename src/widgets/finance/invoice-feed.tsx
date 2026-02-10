@@ -89,7 +89,7 @@ export function InvoiceFeed({
       } else if (result.status === 'unmapped') {
         setSyncMessage('Event not linked to QuickBooks project');
       } else if (result.status === 'not_connected') {
-        setSyncMessage('Connect QuickBooks in Settings');
+        setSyncMessage('Connect QuickBooks in Kit');
       } else {
         setSyncMessage(result.error ?? 'Sync failed');
       }

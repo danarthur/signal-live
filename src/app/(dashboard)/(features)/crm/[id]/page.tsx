@@ -173,13 +173,13 @@ export default function RunOfShowPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="p-3 rounded-full hover:bg-stone-100 dark:hover:bg-white/10 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-colors"
+            className="p-3 rounded-full hover:bg-ceramic/10 text-ink-muted hover:text-ceramic transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-light text-stone-900 dark:text-white tracking-tight">{gigDetails.title}</h1>
-            <div className="flex items-center gap-4 text-sm text-stone-500 mt-1">
+            <h1 className="text-3xl font-light text-ceramic tracking-tight">{gigDetails.title}</h1>
+            <div className="flex items-center gap-4 text-sm text-ink-muted mt-1">
               <span className="flex items-center gap-1">
                 <Users size={14} /> {gigDetails.client}
               </span>
@@ -195,7 +195,7 @@ export default function RunOfShowPage() {
 
         <button
           onClick={handleCreateCue}
-          className="bg-stone-900 dark:bg-white text-white dark:text-black px-5 py-2.5 rounded-full hover:scale-105 transition-all flex items-center gap-2 shadow-xl shadow-stone-900/10"
+          className="bg-ceramic text-obsidian px-5 py-2.5 rounded-full hover:scale-105 transition-all flex items-center gap-2 liquid-levitation"
         >
           <Plus size={16} /> Add Cue
         </button>

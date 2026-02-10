@@ -12,7 +12,10 @@ import { DailyBriefingClient } from '@/app/(dashboard)/(features)/inbox/componen
 import { AIStatus } from '@/app/(dashboard)/(features)/brain/components/AIStatus';
 import { FinancialUpdates } from '@/app/(dashboard)/(features)/finance/components/FinancialUpdates';
 
-export default function Home() {
+/**
+ * Main Dashboard (Lobby) — Overview, finance, inbox, and AI input.
+ */
+export default function LobbyPage() {
   const { viewState, setViewState } = useSession();
   const [input, setInput] = useState('');
 
@@ -48,7 +51,7 @@ export default function Home() {
                    <FinancialUpdates />
                 </div>
               </LiquidPanel>
-              
+
               <ActiveProductionWidget />
             </div>
 

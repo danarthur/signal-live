@@ -48,7 +48,7 @@ export function BladeManager({ events }: BladeManagerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-xl"
+            className="fixed inset-0 z-40 bg-obsidian/40 backdrop-blur-xl"
             onClick={closeBlades}
             onKeyDown={(e) => e.key === 'Escape' && closeBlades()}
             role="button"

@@ -17,7 +17,7 @@ const createEventSchema = z.object({
   endsAt: isoDatetime,
   status: eventStatusSchema.default('planned'),
   locationName: z.string().nullable().optional(),
-  gigId: z.string().uuid().nullable().optional(),
+  parentEventId: z.string().uuid().nullable().optional(),
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
@@ -30,7 +30,7 @@ export type CreateEventResult =
  * Creates an event in the active workspace.
  * workspace_id is derived server-side – never trusted from the client.
  *
- * Parent Verification: If gig_id is provided, the gig must exist and belong
+ * Parent Verification: If parentEventId is provided, the event must exist and belong
  * to the active workspace. Prevents cross-workspace injection.
  */
 export async function createEvent(input: CreateEventInput): Promise<CreateEventResult> {
@@ -49,31 +49,31 @@ export async function createEvent(input: CreateEventInput): Promise<CreateEventR
       };
     }
 
-    const { title, startsAt, endsAt, status, locationName, gigId } = parsed.data;
+    const { title, startsAt, endsAt, status, locationName, parentEventId } = parsed.data;
 
     const supabase = await createClient();
 
-    if (gigId) {
-      const { data: gig, error: gigError } = await supabase
-        .from('gigs')
+    if (parentEventId) {
+      const { data: parent, error: parentError } = await supabase
+        .from('events')
         .select('id, workspace_id')
-        .eq('id', gigId)
+        .eq('id', parentEventId)
         .maybeSingle();
 
-      if (gigError) {
-        console.error('[CRM] createEvent gig lookup error:', gigError.message);
-        return { success: false, error: gigError.message };
+      if (parentError) {
+        console.error('[CRM] createEvent parent lookup error:', parentError.message);
+        return { success: false, error: parentError.message };
       }
 
-      if (!gig) {
-        return { success: false, error: 'Gig not found.' };
+      if (!parent) {
+        return { success: false, error: 'Parent event not found.' };
       }
 
-      const gigWorkspaceId = (gig as { workspace_id?: string }).workspace_id;
-      if (gigWorkspaceId !== workspaceId) {
+      const parentWorkspaceId = (parent as { workspace_id?: string }).workspace_id;
+      if (parentWorkspaceId !== workspaceId) {
         return {
           success: false,
-          error: 'Invalid Gig Context. This gig belongs to a different workspace.',
+          error: 'Invalid context. That event belongs to a different workspace.',
         };
       }
     }
@@ -87,7 +87,7 @@ export async function createEvent(input: CreateEventInput): Promise<CreateEventR
         ends_at: endsAt,
         status,
         location_name: locationName?.trim() ?? null,
-        gig_id: gigId ?? null,
+        actor: 'user',
       })
       .select('id')
       .single();

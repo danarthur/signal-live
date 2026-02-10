@@ -157,7 +157,7 @@ export async function signInAction(
   } else {
     // Check if there was a redirect parameter in the original request
     const intendedPath = formData.get('redirect') as string;
-    redirectPath = intendedPath && intendedPath !== '/login' ? intendedPath : '/';
+    redirectPath = intendedPath && intendedPath !== '/login' ? intendedPath : '/lobby';
   }
 
   // Return success state with redirect info before actual redirect

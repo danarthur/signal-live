@@ -44,7 +44,7 @@ export function ProfitabilityCard({
 
   return (
     <LiquidPanel
-      className={`p-6 flex flex-col gap-4 bg-white/50 dark:bg-white/5 backdrop-blur-md border rounded-2xl shadow-lg ${className ?? ''}`}
+      className={`liquid-card p-6 flex flex-col gap-4 border-mercury ${className ?? ''}`}
     >
       <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-muted">
         Budget vs Actuals

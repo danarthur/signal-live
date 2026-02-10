@@ -22,7 +22,7 @@ function getStateKey(): Buffer {
   if (!raw || raw.length < 16) {
     throw new Error('QBO_TOKEN_ENCRYPTION_KEY or QBO_STATE_ENCRYPTION_KEY must be set');
   }
-  const salt = 'danielos-qbo-state-salt';
+  const salt = process.env.QBO_STATE_SALT || 'signal-qbo-state-salt';
   return scryptSync(raw, salt, KEY_LEN);
 }
 

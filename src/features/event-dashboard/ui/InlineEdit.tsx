@@ -42,7 +42,7 @@ export function InlineEditText({
         autoFocus
         defaultValue={show}
         className={cn(
-          'w-full min-w-0 rounded-lg border border-[var(--glass-border)] bg-white/10 px-2 py-1 text-ink outline-none focus:ring-2 focus:ring-[var(--ring)]',
+          'w-full min-w-0 rounded-lg border border-[var(--glass-border)] bg-ceramic/10 px-2 py-1 text-ink outline-none focus:ring-2 focus:ring-[var(--ring)]',
           className
         )}
         onBlur={(e) => handleSubmit(e.currentTarget.value)}
@@ -65,7 +65,7 @@ export function InlineEditText({
       type="button"
       onClick={() => setEditing(true)}
       className={cn(
-        'w-full text-left rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]',
+        'w-full text-left rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-ceramic/5 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]',
         !display && 'text-ink-muted',
         displayClassName ?? className
       )}
@@ -107,7 +107,7 @@ export function InlineEditNumber({
         autoFocus
         defaultValue={show}
         className={cn(
-          'w-full min-w-0 rounded-lg border border-[var(--glass-border)] bg-white/10 px-2 py-1 text-ink outline-none focus:ring-2 focus:ring-[var(--ring)]',
+          'w-full min-w-0 rounded-lg border border-[var(--glass-border)] bg-ceramic/10 px-2 py-1 text-ink outline-none focus:ring-2 focus:ring-[var(--ring)]',
           className
         )}
         onBlur={(e) => handleSubmit(e.currentTarget.value)}
@@ -128,7 +128,7 @@ export function InlineEditNumber({
       type="button"
       onClick={() => setEditing(true)}
       className={cn(
-        'w-full text-left rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]',
+        'w-full text-left rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-ceramic/5 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]',
         num == null && 'text-ink-muted',
         displayClassName ?? className
       )}
@@ -165,7 +165,7 @@ export function InlineEditTextarea({
         defaultValue={optimisticValue}
         rows={3}
         className={cn(
-          'w-full min-w-0 rounded-lg border border-[var(--glass-border)] bg-white/10 text-ink resize-y',
+          'w-full min-w-0 rounded-lg border border-[var(--glass-border)] bg-ceramic/10 text-ink resize-y',
           className
         )}
         onBlur={(e) => handleSubmit(e.currentTarget.value)}
@@ -185,7 +185,7 @@ export function InlineEditTextarea({
       type="button"
       onClick={() => setEditing(true)}
       className={cn(
-        'w-full text-left rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] whitespace-pre-wrap',
+        'w-full text-left rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-ceramic/5 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] whitespace-pre-wrap',
         !str && 'text-ink-muted',
         displayClassName ?? className
       )}

@@ -65,33 +65,33 @@ export async function getPackages(workspaceId: string): Promise<GetPackagesResul
 }
 
 // =============================================================================
-// upsertProposal(gigId, items): Create or update draft proposal and line items
+// upsertProposal(eventId, items): Create or update draft proposal and line items
 // =============================================================================
 
 export async function upsertProposal(
-  gigId: string,
+  eventId: string,
   items: ProposalLineItemInput[]
 ): Promise<UpsertProposalResult> {
   const supabase = await createClient();
 
-  // 1. Get gig for workspace_id
-  const { data: gig, error: gigError } = await supabase
-    .from('gigs')
+  // 1. Get event for workspace_id
+  const { data: event, error: eventError } = await supabase
+    .from('events')
     .select('id, workspace_id')
-    .eq('id', gigId)
+    .eq('id', eventId)
     .single();
 
-  if (gigError || !gig) {
-    return { proposalId: null, total: 0, error: gigError?.message ?? 'Gig not found' };
+  if (eventError || !event) {
+    return { proposalId: null, total: 0, error: eventError?.message ?? 'Event not found' };
   }
 
-  const workspaceId = (gig as { workspace_id: string }).workspace_id;
+  const workspaceId = (event as { workspace_id: string }).workspace_id;
 
-  // 2. Find existing draft proposal for this gig, or create one
+  // 2. Find existing draft proposal for this event, or create one
   const { data: existing } = await supabase
     .from('proposals')
     .select('id')
-    .eq('gig_id', gigId)
+    .eq('event_id', eventId)
     .eq('status', 'draft')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -108,7 +108,7 @@ export async function upsertProposal(
       .from('proposals')
       .insert({
         workspace_id: workspaceId,
-        gig_id: gigId,
+        event_id: eventId,
         status: 'draft',
         public_token: publicToken,
       })
@@ -202,7 +202,7 @@ export async function signProposal(
 
   const { data: proposal, error: fetchError } = await supabase
     .from('proposals')
-    .select('id, gig_id, workspace_id')
+    .select('id, event_id, workspace_id')
     .eq('public_token', token.trim())
     .in('status', ['sent', 'viewed'])
     .maybeSingle();
@@ -226,7 +226,7 @@ export async function signProposal(
   const now = new Date().toISOString();
   const { error: contractError } = await supabase.from('contracts').insert({
     workspace_id: proposal.workspace_id,
-    gig_id: proposal.gig_id,
+    event_id: proposal.event_id,
     status: 'signed',
     signed_at: now,
     pdf_url: null,

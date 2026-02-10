@@ -131,21 +131,19 @@ export function EventDetailBlade({ eventId }: EventDetailBladeProps) {
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
               <Link
-                href={eventId.startsWith('gig:') ? `/events/g/${eventId.slice(4)}` : `/events/${eventId}`}
+                href={`/events/${detail.id}`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-silk/80 hover:bg-silk text-ink font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               >
                 <LayoutDashboard className="w-4 h-4" />
                 Command Center
               </Link>
-              {detail.gigId && (
-                <Link
-                  href={`/events/${detail.gigId}/deal`}
+              <Link
+                href={`/events/${detail.id}/deal`}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-silk/80 hover:bg-silk text-ink font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                 >
                   <FileText className="w-4 h-4" />
                   Open Deal room
                 </Link>
-              )}
               {detail.projectId && (
                 <Link
                   href={`/projects/${detail.projectId}`}

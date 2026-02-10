@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DanielOS",
-  description: "Event Operating System",
+  title: "Signal",
+  description: "The Event Operating System",
 };
 
 export const viewport: Viewport = {

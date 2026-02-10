@@ -1,6 +1,6 @@
 /**
  * Permission Utilities
- * Centralized permission checking for DanielOS
+ * Centralized permission checking for Signal
  * @module lib/permissions
  */
 

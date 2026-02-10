@@ -74,14 +74,14 @@ const PERMISSION_CONFIGS: PermissionConfig[] = [
   },
   {
     key: 'manage_team',
-    label: 'Manage Team',
-    description: 'Add/remove members and edit permissions',
+    label: 'Lead Team',
+    description: 'Add/remove members and fix permissions',
     icon: Users,
   },
   {
     key: 'manage_locations',
-    label: 'Manage Locations',
-    description: 'Add and edit office locations',
+    label: 'Tune Locations',
+    description: 'Add and fix office locations',
     icon: MapPin,
   },
 ];

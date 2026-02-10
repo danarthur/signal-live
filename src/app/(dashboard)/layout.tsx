@@ -7,6 +7,8 @@
 import { createClient } from "@/shared/api/supabase/server";
 import { SidebarWithUser } from "@/shared/ui/layout/SidebarWithUser";
 import { WorkspaceProvider, type WorkspaceRole } from "@/shared/ui/providers/WorkspaceProvider";
+import { PreferencesProvider } from "@/shared/ui/providers/PreferencesContext";
+import { SystemHeartProvider } from "@/shared/ui/providers/SystemHeartContext";
 
 /** Dashboard uses cookies (Supabase auth) — always render on the server. */
 export const dynamic = 'force-dynamic';
@@ -97,13 +99,15 @@ export default async function DashboardLayout({
       workspaceName={activeWorkspace?.name ?? null}
       role={activeWorkspace?.role ?? null}
     >
+      <PreferencesProvider>
+      <SystemHeartProvider>
       {/* Single full-height wrapper so sidebar + main get a defined height */}
       <div className="min-h-screen h-full flex flex-col min-w-0">
-        {/* Ambient Background */}
+        {/* Ambient Background (OKLCH) */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 grain-overlay" />
-          <div className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-accent-sage/10 blur-[120px] dark:bg-accent-sage/5" />
-          <div className="absolute top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-accent-clay/10 blur-[120px] dark:bg-accent-clay/5" />
+          <div className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-neon-blue/10 blur-[120px]" />
+          <div className="absolute top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-neon-rose/5 blur-[120px]" />
         </div>
 
         {/* Main Layout: sidebar + content area that fills and scrolls */}
@@ -112,13 +116,15 @@ export default async function DashboardLayout({
             user={userData} 
             workspaceName={activeWorkspace?.name}
           />
-          <main className="flex-1 min-w-0 min-h-0 flex flex-col relative overflow-hidden bg-canvas/95">
+          <main className="flex-1 min-w-0 min-h-0 flex flex-col relative overflow-hidden bg-obsidian/95">
             <div className="flex-1 min-h-0 min-w-0 overflow-auto flex flex-col">
               {children}
             </div>
           </main>
         </div>
       </div>
+      </SystemHeartProvider>
+      </PreferencesProvider>
     </WorkspaceProvider>
   );
 }

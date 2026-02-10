@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  const next = searchParams.get('next') ?? '/lobby';
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   }
 
   const origin = request.nextUrl.origin;
-  const redirectTo = next.startsWith('/') ? `${origin}${next}` : `${origin}/`;
+  const redirectTo = next.startsWith('/') ? `${origin}${next}` : `${origin}/lobby`;
   const response = NextResponse.redirect(redirectTo);
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {

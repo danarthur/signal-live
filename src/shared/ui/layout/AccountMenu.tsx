@@ -133,7 +133,7 @@ export function AccountMenu({ user }: AccountMenuProps) {
                   transition-colors text-left"
               >
                 <Settings className="w-4 h-4" />
-                <span className="text-sm">Settings</span>
+                <span className="text-sm">Kit</span>
               </button>
               
               <form action={signOutAction}>

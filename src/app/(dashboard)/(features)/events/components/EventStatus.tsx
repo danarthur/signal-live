@@ -23,12 +23,16 @@ export function EventStatus() {
     async function fetchEvents() {
       try {
         const res = await fetch('/api/events', { signal: controller.signal });
+        const data = await res.json();
         if (res.ok) {
-          const data = await res.json();
           setEvents(Array.isArray(data) ? data : []);
+        } else {
+          console.error('[EventStatus] Events API error:', res.status, (data as { error?: string })?.error ?? data);
+          setEvents([]);
         }
       } catch (error) {
-        console.error('Failed to fetch events');
+        console.error('[EventStatus] Failed to fetch events', error);
+        setEvents([]);
       } finally {
         setLoading(false);
       }

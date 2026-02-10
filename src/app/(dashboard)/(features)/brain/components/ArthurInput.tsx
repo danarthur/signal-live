@@ -89,7 +89,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={cn(
         "relative w-full mx-auto flex items-center gap-3 p-2 pr-2 transition-all duration-500 ease-out group",
-        "liquid-panel focus-within:shadow-xl",
+        "liquid-panel focus-within:ring-2 focus-within:ring-neon-blue/30",
         isExpanded ? "rounded-3xl items-start pt-4 min-h-[120px]" : "rounded-full h-[68px]"
       )}
     >
@@ -120,7 +120,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
               exit={{ opacity: 0, y: -10, height: 0 }}
               className="absolute -top-12 left-0 right-0 flex items-center gap-2"
             >
-              <span className="liquid-panel !rounded-lg !px-3 !py-1.5 text-xs font-medium text-ink shadow-sm flex items-center gap-2">
+              <span className="liquid-panel !rounded-lg !px-3 !py-1.5 text-xs font-medium text-ink flex items-center gap-2">
                 <span className="truncate max-w-[200px]">{attachedFile.name}</span>
                 <button
                   type="button"
@@ -141,7 +141,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
             value={input}
             onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder={attachedFile ? 'Add a note...' : 'Ask DanielOS...'}
+          placeholder={attachedFile ? 'Add a note...' : 'Ask Signal...'}
             disabled={isLoading}
           className={cn(
             "w-full bg-transparent border-none outline-none text-ink placeholder:text-ink-muted/70 font-sans text-lg h-full py-2 disabled:opacity-50",
@@ -174,7 +174,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={handleSubmit}
-              className="p-3 rounded-full bg-ink text-canvas shadow-lg hover:bg-walnut transition-colors flex items-center justify-center"
+              className="p-3 rounded-full bg-ink text-canvas liquid-levitation hover:bg-walnut transition-colors flex items-center justify-center"
             >
               <ArrowUp size={20} strokeWidth={2.5} />
             </motion.button>

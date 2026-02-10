@@ -65,13 +65,13 @@ function DropdownProposals({
 }
 
 export interface QuickActionsProps {
-  gigId: string;
+  eventId: string;
   proposalIds: { id: string; status: string }[];
   className?: string;
 }
 
 export function QuickActions({
-  gigId,
+  eventId,
   proposalIds,
   className,
 }: QuickActionsProps) {
@@ -84,14 +84,14 @@ export function QuickActions({
   async function handleGenerateFromProposal(proposalId: string) {
     setError(null);
     setLoadingProposalId(proposalId);
-    const result = await generateInvoice(proposalId, gigId);
+    const result = await generateInvoice(proposalId, eventId);
     setLoadingProposalId(null);
     if (result.error) {
       setError(result.error);
       return;
     }
     if (result.invoiceId) {
-      router.push(`/events/${gigId}/finance`);
+      router.push(`/events/${eventId}/finance`);
       router.refresh();
     }
   }
@@ -103,7 +103,7 @@ export function QuickActions({
       </h2>
       <div className="flex flex-col gap-3">
         <Button variant="outline" className="w-full justify-start gap-2" asChild>
-          <a href={`/invoices/new?gigId=${gigId}`}>
+          <a href={`/invoices/new?eventId=${eventId}`}>
             <Plus className="size-4" />
             New Invoice
           </a>

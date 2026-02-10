@@ -9,7 +9,7 @@ const SRC_DIR = path.join(ROOT_DIR, 'src');
 const FORBIDDEN_TOKENS = [
     { 
         pattern: /bg-white(?![a-zA-Z0-9-])/g, 
-        message: "❌ Found 'bg-white'. Use 'bg-canvas' (Page) or '.liquid-panel' (Card)." 
+        message: "❌ Found 'bg-white'. Use 'bg-obsidian' (Page) or '.liquid-card' (Card)." 
     },
     { 
         pattern: /bg-gray-[1-9]00/g, 
@@ -21,7 +21,7 @@ const FORBIDDEN_TOKENS = [
     },
     { 
         pattern: /shadow-(sm|md|lg|xl)/g, 
-        message: "❌ Found default Tailwind shadow. Use '.liquid-panel' (shadow is baked in)." 
+        message: "❌ Found default Tailwind shadow. Use '.liquid-card' or '.liquid-panel' (shadow is baked in)." 
     },
     { 
         pattern: /border-gray-[1-9]00/g, 

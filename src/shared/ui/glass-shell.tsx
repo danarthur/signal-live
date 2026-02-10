@@ -23,7 +23,7 @@ export function GlassShell({
       className={cn(
         "flex flex-col relative overflow-hidden",
         "rounded-[2.5rem] border border-[var(--glass-border)]",
-        "bg-[var(--glass-bg)]/30 backdrop-blur-3xl shadow-sm",
+        "bg-[var(--glass-bg)]/30 backdrop-blur-3xl",
         "h-full w-full", 
         className
       )} 

@@ -22,10 +22,11 @@ export function ActiveProductionWidget() {
   useEffect(() => {
     let active = true;
 
+    // Include events with lifecycle_status in (confirmed, production, live) OR status=confirmed when lifecycle_status is null
     let query = supabase
       .from('events')
       .select('id, title, starts_at')
-      .in('lifecycle_status', ['confirmed', 'production', 'live'])
+      .or('lifecycle_status.in.(confirmed,production,live),and(lifecycle_status.is.null,status.eq.confirmed)')
       .order('starts_at', { ascending: true })
       .limit(3);
 

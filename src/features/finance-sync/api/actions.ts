@@ -266,7 +266,6 @@ export async function createInvoice(
     .insert({
       workspace_id: parsed.data.workspaceId,
       event_id: parsed.data.eventId,
-      gig_id: parsed.data.gigId,
       bill_to_id: parsed.data.billToId,
       subtotal_amount: parsed.data.subtotalAmount,
       tax_amount: parsed.data.taxAmount || 0,
@@ -586,7 +585,7 @@ function transformInvoice(data: any): Invoice {
     id: data.id,
     workspaceId: data.workspace_id,
     eventId: data.event_id,
-    gigId: data.gig_id,
+    gigId: data.event_id ?? data.gig_id,
     billToId: data.bill_to_id,
     invoiceNumber: data.invoice_number,
     subtotalAmount: parseFloat(data.subtotal_amount),
@@ -607,7 +606,7 @@ function transformInvoice(data: any): Invoice {
 function transformOutstandingInvoice(data: any): OutstandingInvoice {
   return {
     ...transformInvoice(data),
-    gigTitle: data.gig_title,
+    gigTitle: data.event_title ?? data.gig_title,
     eventName: data.event_name,
     billToName: data.bill_to_name,
     amountPaid: parseFloat(data.amount_paid || 0),

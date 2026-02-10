@@ -19,8 +19,8 @@ export function LiquidPanel({ children = null, className, hoverEffect = false, .
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       whileHover={hoverEffect ? { scale: 1.005, opacity: 1 } : undefined}
       className={cn(
-        "liquid-panel p-6 relative overflow-hidden transition-colors duration-300",
-        hoverEffect && "liquid-panel-hover",
+        "liquid-card p-6 relative overflow-hidden transition-colors duration-300",
+        hoverEffect && "hover:translate-y-[-2px] hover:scale-[1.002]",
         className
       )}
       {...props}

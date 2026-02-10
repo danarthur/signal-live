@@ -104,7 +104,7 @@ export function PaymentTimeline({ timeline, className }: PaymentTimelineProps) {
           aria-hidden
         />
         <motion.div
-          className="absolute w-4 h-4 rounded-full bg-[var(--walnut)] dark:bg-stone-400 -translate-x-1/2 z-10 border-2 border-[var(--background)] shadow-sm"
+          className="absolute w-4 h-4 rounded-full bg-[var(--walnut)] dark:bg-stone-400 -translate-x-1/2 z-10 border-2 border-[var(--background)]"
           style={{ left: `${positionPct}%` }}
           initial={{ scale: 0, opacity: 0 }}
           animate={{

@@ -7,8 +7,8 @@
 import { SmartLoginForm } from '@/features/auth/smart-login';
 
 export const metadata = {
-  title: 'Create Account | DanielOS',
-  description: 'Create your DanielOS workspace',
+  title: 'Create Account | Signal',
+  description: 'Create your Signal workspace',
 };
 
 interface SignUpPageProps {

@@ -17,11 +17,11 @@ export interface GenerateInvoiceResult {
  * Create a draft invoice from a proposal (header + line items).
  * Call after proposal is signed or from "Generate from Proposal" in the UI.
  * @param proposalId – Proposal UUID
- * @param gigId – Optional gig ID to revalidate the event finance page
+ * @param eventId – Optional event ID to revalidate the event finance page
  */
 export async function generateInvoice(
   proposalId: string,
-  gigId?: string
+  eventId?: string
 ): Promise<GenerateInvoiceResult> {
   const supabase = await createClient();
 
@@ -36,7 +36,7 @@ export async function generateInvoice(
 
   const id = typeof invoiceId === 'string' ? invoiceId : invoiceId?.[0];
   if (id) {
-    if (gigId) revalidatePath(`/events/${gigId}/finance`);
+    if (eventId) revalidatePath(`/events/${eventId}/finance`);
     revalidatePath('/crm');
   }
 

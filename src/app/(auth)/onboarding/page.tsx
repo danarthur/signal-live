@@ -9,8 +9,8 @@ import { createClient } from '@/shared/api/supabase/server';
 import { OnboardingWizard } from './components/onboarding-wizard';
 
 export const metadata = {
-  title: 'Welcome to DanielOS',
-  description: 'Set up your DanielOS workspace',
+  title: 'Welcome to Signal',
+  description: 'Set up your Signal workspace',
 };
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,7 @@ async function getOnboardingState() {
   
   // If onboarding is already complete, redirect to dashboard
   if (profile?.onboarding_completed) {
-    redirect('/');
+    redirect('/lobby');
   }
   
   // Fetch existing workspaces - don't use single() since user might have 0 or many

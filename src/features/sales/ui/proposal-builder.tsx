@@ -17,10 +17,11 @@ const CATALOG_DROPPABLE = 'catalog';
 const RECEIPT_DROPPABLE = 'receipt';
 
 export interface ProposalBuilderProps {
-  gigId: string;
+  /** Event id (unified events table). */
+  eventId: string;
   workspaceId: string;
   initialProposal?: ProposalWithItems | null;
-  /** Client email to pre-fill "Send to" when proposal is sent (e.g. from gig or CRM) */
+  /** Client email to pre-fill "Send to" when proposal is sent (e.g. from event or CRM) */
   clientEmail?: string | null;
   onSaved?: (proposalId: string, total: number) => void;
   className?: string;
@@ -39,7 +40,7 @@ function mapProposalItemsToLineItems(initialProposal: ProposalWithItems | null |
 }
 
 export function ProposalBuilder({
-  gigId,
+  eventId,
   workspaceId,
   initialProposal,
   clientEmail,
@@ -244,14 +245,14 @@ export function ProposalBuilder({
         quantity: item.quantity,
         unitPrice: item.unitPrice,
       }));
-      const result = await upsertProposal(gigId, input);
+      const result = await upsertProposal(eventId, input);
       setSaving(false);
       if (result.proposalId) {
         setProposalId(result.proposalId);
         onSaved?.(result.proposalId, result.total);
       }
     });
-  }, [gigId, lineItems, onSaved]);
+  }, [eventId, lineItems, onSaved]);
 
   const handleSend = useCallback(() => {
     setSendError(null);
@@ -265,7 +266,7 @@ export function ProposalBuilder({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
         }));
-        const upsert = await upsertProposal(gigId, input);
+        const upsert = await upsertProposal(eventId, input);
         if (!upsert.proposalId) {
           setSendError(upsert.error ?? 'Failed to save proposal.');
           return;
@@ -283,7 +284,7 @@ export function ProposalBuilder({
         setSending(false);
       }
     });
-  }, [gigId, lineItems, onSaved]);
+  }, [eventId, lineItems, onSaved]);
 
   const onDragEnd = useCallback(
     (result: DropResult) => {
@@ -340,7 +341,7 @@ export function ProposalBuilder({
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
                       className={cn(
-                        'flex items-center rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-xl min-h-[72px] w-[min(320px,90vw)] list-none',
+                        'flex items-center rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] liquid-levitation-strong min-h-[72px] w-[min(320px,90vw)] list-none',
                         snapshot.isDragging && 'opacity-95'
                       )}
                     >

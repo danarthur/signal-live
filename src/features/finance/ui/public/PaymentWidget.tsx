@@ -18,7 +18,7 @@ export interface PaymentWidgetProps {
 }
 
 const MOCK_BANK = {
-  bankName: 'DanielOS Mock Bank',
+  bankName: 'Signal Mock Bank',
   routing: '021000021',
   account: '****4521',
 };

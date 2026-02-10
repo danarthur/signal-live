@@ -170,7 +170,7 @@ export function OnboardingWizard({ initialState }: OnboardingWizardProps) {
         
         // Complete onboarding after workspace setup
         await completeOnboarding();
-        router.push('/');
+        router.push('/lobby');
         return;
       }
       
@@ -200,10 +200,10 @@ export function OnboardingWizard({ initialState }: OnboardingWizardProps) {
         className="text-center"
       >
         <h1 className="text-3xl font-light text-ink tracking-tight mb-2">
-          Initializing DanielOS
+          Initializing Signal
         </h1>
         <p className="text-sm text-ink-muted font-light">
-          Setting up your personal operating system
+          Setting up your event operating system
         </p>
       </motion.div>
       
@@ -596,7 +596,7 @@ export function OnboardingWizard({ initialState }: OnboardingWizardProps) {
             ) : currentStep === STEPS.length - 1 ? (
               <>
                 <Sparkles className="w-4 h-4" />
-                Launch DanielOS
+                Launch Signal
               </>
             ) : (
               <>
@@ -616,7 +616,7 @@ export function OnboardingWizard({ initialState }: OnboardingWizardProps) {
         className="text-center space-y-3"
       >
         <p className="text-xs text-ink-muted/40 font-light">
-          DanielOS • Post-Enterprise Operating System
+          Signal • The Event Operating System
         </p>
         
         {/* Sign Out Option */}

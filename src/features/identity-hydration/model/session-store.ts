@@ -111,7 +111,7 @@ export const useSessionStore = create<SessionState>()(
       reset: () => set(INITIAL_STATE),
     }),
     {
-      name: 'danielos-session',
+      name: 'signal-session',
       storage: createJSONStorage(() => sessionStorage),
       // Only persist certain fields
       partialize: (state) => ({

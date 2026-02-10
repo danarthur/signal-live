@@ -14,7 +14,7 @@ export function Shell({ children }: ShellProps) {
   const routes = [
     { path: '/', label: 'Home' },
     { path: '/brain', label: 'Nodes' },
-    { path: '/engine', label: 'Settings' },
+    { path: '/engine', label: 'Kit' },
   ]
 
   return (

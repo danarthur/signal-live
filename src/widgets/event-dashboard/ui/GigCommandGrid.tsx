@@ -90,21 +90,21 @@ export function GigCommandGrid({ gig }: GigCommandGridProps) {
             </Link>
             <Link
               href={`/events/${gig.id}/deal`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-white/5 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-ceramic/5 transition-colors"
             >
               <FileText className="size-4" />
               Deal room
             </Link>
             <Link
               href={`/crm/${gig.id}`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-white/5 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-ceramic/5 transition-colors"
             >
               <ListChecks className="size-4" />
               Run of Show
             </Link>
             <Link
               href="/calendar"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-white/5 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-ceramic/5 transition-colors"
             >
               <Calendar className="size-4" />
               Calendar

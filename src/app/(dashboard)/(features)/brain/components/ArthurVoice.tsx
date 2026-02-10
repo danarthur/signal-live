@@ -78,7 +78,7 @@ export default function ArthurVoice({ className }: ArthurVoiceProps) {
             animate={{ opacity: 1, y: -50, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
             className={cn(
-              'absolute whitespace-nowrap text-[10px] px-3 py-1.5 rounded-full font-mono uppercase tracking-widest shadow-lg backdrop-blur-md z-50 pointer-events-none liquid-panel',
+              'absolute whitespace-nowrap text-[10px] px-3 py-1.5 rounded-full font-mono uppercase tracking-widest backdrop-blur-md z-50 pointer-events-none liquid-panel',
               status === 'error'
                 ? '!bg-red-50 text-red-600 !border-red-100'
                 : status === 'recording'
@@ -101,7 +101,7 @@ export default function ArthurVoice({ className }: ArthurVoiceProps) {
         onClick={status === 'recording' ? stopRecording : startRecording}
         disabled={status === 'processing' || status === 'playing'}
         className={cn(
-          'p-3 rounded-full transition-all duration-300 flex items-center justify-center shadow-sm',
+          'p-3 rounded-full transition-all duration-300 flex items-center justify-center',
           status === 'recording'
             ? 'bg-rose-100 text-rose-600 animate-pulse'
             : status === 'processing'
@@ -110,7 +110,7 @@ export default function ArthurVoice({ className }: ArthurVoiceProps) {
                 ? 'bg-emerald-100 text-emerald-600'
                 : status === 'error'
                   ? 'bg-red-100 text-red-500'
-                  : 'bg-ink/5 text-ink hover:bg-ink hover:text-[var(--background)] hover:shadow-md'
+                  : 'bg-ink/5 text-ink hover:bg-ink hover:text-[var(--background)]'
         )}
       >
         {status === 'recording' ? <Square className="w-5 h-5 fill-current" /> :

@@ -1,0 +1,48 @@
+---
+description: Enforces "Phonesthetic" Naming (Kiki vs. Bouba) and "Post-Enterprise" Micro-Copy.
+globs: ["src/**/*.tsx", "src/config/navigation.ts", "content/**/*.md"]
+---
+# 🗣️ DANIEL OS | PHONESTHETIC VOICE
+
+## 1. THE CORE PRINCIPLE: SOUND = PHYSICS
+We do not use words because they are "correct." We use words because they **sound like the action** they perform.
+- **Kiki (Speed):** Sharp, spiky, instant. (e.g., *Click, Tick, Cut*).
+- **Bouba (Stability):** Round, heavy, safe. (e.g., *Home, Pool, Loom*).
+
+## 2. THE BANNED LIST (ANTI-PATTERNS)
+These words are "Corporate Gray." They have no physical texture.
+- ❌ **"Settings"** -> Use **"Kit"** (Tools) or **"Mode"** (State).
+- ❌ **"Dashboard"** -> Use **"Lobby"** (Space) or **"View"** (Lens).
+- ❌ **"Submit"** -> Use **"Ship"** (Action) or **"Post"** (Commit).
+- ❌ **"Manage"** -> Use **"Tune"** (Precision) or **"Lead"** (Control).
+- ❌ **"Notification"** -> Use **"Ping"** (Sound) or **"Signal"** (Light).
+
+## 3. CONTEXTUAL MAPPING
+
+### A. The "Kiki" Layer (Actions & Tools)
+*Context: Buttons, Toggles, Filters, Destructive Actions.*
+* **Phonemes:** `K`, `T`, `P`, `Ch`, Short `I`.
+* **Examples:**
+    * *Save* -> **Lock** (Click shut)
+    * *Edit* -> **Fix** (Sharp repair)
+    * *Run* -> **Go** (Instant)
+    * *Search* -> **Seek** (Laser focus)
+
+### B. The "Bouba" Layer (Containers & Safety)
+*Context: Navigation, Headers, Storage, Confirmation.*
+* **Phonemes:** `B`, `M`, `L`, `O`, `U`.
+* **Examples:**
+    * *Library* -> **Vault** (Heavy storage)
+    * *Group* -> **Bundle** (Soft wrapping)
+    * *User* -> **Member** (Belonging)
+    * *Help* -> **Aid** (Soft assistance)
+
+## 4. TYPOGRAPHY PAIRING
+- **Kiki Words** must be `tracking-tight` (Compressed).
+- **Bouba Words** must be `tracking-normal` (Breathing room).
+
+## 5. AUDIT CHECKLIST
+When writing copy, ask:
+1.  **Does it snap?** (Is it a Kiki action?)
+2.  **Does it hold?** (Is it a Bouba container?)
+3.  **Is it boring?** (If it sounds like Microsoft Word, kill it.)

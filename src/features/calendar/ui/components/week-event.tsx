@@ -77,7 +77,7 @@ export function WeekEvent({ position, onClick, variant = 'absolute' }: WeekEvent
     <button
       type="button"
       onClick={onClick}
-      className={`absolute z-10 hover:z-50 hover:shadow-lg flex items-center ${useSideBySide ? '' : 'left-[3px] right-[3px]'} ${baseClass}`}
+      className={`absolute z-10 hover:z-50 flex items-center ${useSideBySide ? '' : 'left-[3px] right-[3px]'} ${baseClass}`}
       style={{
         top: `${top}%`,
         height: `${height}%`,

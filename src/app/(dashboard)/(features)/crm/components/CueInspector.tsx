@@ -64,7 +64,7 @@ export function CueInspector({
 
   const handleDelete = async () => {
     if (!selectedCue) return;
-    if (!window.confirm('Delete this cue?')) return;
+    if (!window.confirm('Nix this cue?')) return;
     await onDelete();
   };
 
@@ -151,7 +151,7 @@ export function CueInspector({
                     className={cn(
                       'h-9 w-9 rounded-lg flex items-center justify-center transition-all',
                       isActive
-                        ? 'bg-ink text-[var(--background)] shadow-sm'
+                        ? 'bg-ink text-[var(--background)]'
                         : 'text-ink-muted hover:text-ink hover:bg-ink/5'
                     )}
                     aria-label={option.label}

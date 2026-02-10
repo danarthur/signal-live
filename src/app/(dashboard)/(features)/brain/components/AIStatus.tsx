@@ -15,7 +15,7 @@ const StatusCard = ({
 }) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
-    className="liquid-panel p-4 shadow-sm transition-all hover:shadow-md flex flex-col justify-between min-h-[100px] overflow-hidden"
+    className="liquid-panel p-4 transition-all flex flex-col justify-between min-h-[100px] overflow-hidden"
   >
     <div className="flex items-center justify-between mb-2">
       <span className="text-[10px] uppercase tracking-widest text-ink-muted font-mono">{label}</span>

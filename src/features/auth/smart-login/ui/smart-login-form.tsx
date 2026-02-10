@@ -1,7 +1,7 @@
 /**
  * Smart Login Form
  * Unified authentication - Sign In / Create Account toggle
- * Liquid Japandi design matching DanielOS aesthetic
+ * Liquid Japandi design matching Signal aesthetic
  * @module features/auth/smart-login/ui/smart-login-form
  */
 
@@ -151,7 +151,7 @@ export function SmartLoginForm({ redirectTo, defaultMode = 'signin' }: SmartLogi
                       ? loadingMessages[loadingMessageIndex] 
                       : mode === 'signin' 
                         ? 'Sign in to your workspace'
-                        : 'Join DanielOS in seconds'
+                        : 'Join Signal in seconds'
                     }
                   </motion.p>
                 </AnimatePresence>
@@ -402,7 +402,7 @@ export function SmartLoginForm({ redirectTo, defaultMode = 'signin' }: SmartLogi
           {/* Footer */}
           <div className="mt-8 pt-5 border-t border-[var(--glass-border)]">
             <p className="text-[11px] text-center text-ink-muted/60 uppercase tracking-widest">
-              DanielOS
+              Signal
             </p>
           </div>
         </div>

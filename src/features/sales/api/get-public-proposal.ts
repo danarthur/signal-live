@@ -24,28 +24,27 @@ export async function getPublicProposal(token: string): Promise<PublicProposalDT
   if (proposalError || !proposal) return null;
 
   const proposalId = proposal.id;
-  const gigId = proposal.gig_id;
+  const eventId = proposal.event_id;
   const workspaceId = proposal.workspace_id;
 
-  // 2. Gig (client name, event date)
-  const { data: gigRow, error: gigError } = await supabase
-    .from('gigs')
-    .select('id, title, event_date, client_name, client:clients(name)')
-    .eq('id', gigId)
+  // 2. Event (title, starts_at, client from organizations)
+  const { data: eventRow, error: eventError } = await supabase
+    .from('events')
+    .select('id, title, starts_at, organizations:client_id(name)')
+    .eq('id', eventId)
     .single();
 
-  if (gigError || !gigRow) return null;
+  if (eventError || !eventRow) return null;
 
-  const row = gigRow as {
+  const row = eventRow as {
     title?: string | null;
-    event_date?: string | null;
-    client_name?: string | null;
-    client?: { name?: string } | null;
+    starts_at?: string | null;
+    organizations?: { name?: string } | null;
   };
   const clientName =
-    (row.client && typeof row.client === 'object' && 'name' in row.client
-      ? (row.client.name as string) ?? null
-      : null) ?? row.client_name ?? null;
+    (row.organizations && typeof row.organizations === 'object' && 'name' in row.organizations
+      ? (row.organizations.name as string) ?? null
+      : null) ?? null;
 
   // 3. Workspace (logo, name)
   const { data: workspace, error: workspaceError } = await supabase
@@ -93,11 +92,11 @@ export async function getPublicProposal(token: string): Promise<PublicProposalDT
 
   return {
     proposal,
-    gig: {
-      id: gigRow.id,
-      title: (gigRow as { title?: string }).title ?? '',
+    event: {
+      id: eventRow.id,
+      title: (eventRow as { title?: string }).title ?? '',
       clientName,
-      eventDate: (gigRow as { event_date?: string | null }).event_date ?? null,
+      startsAt: (eventRow as { starts_at?: string | null }).starts_at ?? null,
     },
     workspace: {
       id: workspace.id,

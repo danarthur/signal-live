@@ -1,6 +1,6 @@
 /**
- * Event entity – fetch gig for Command Center when no event is linked.
- * Server-only; workspace-scoped via RLS.
+ * Event entity – fetch event as GigCommandDTO shape (legacy compat).
+ * Prefer getEventCommand() for new code. Fetches from unified events table.
  */
 
 import 'server-only';
@@ -18,31 +18,34 @@ export interface GigCommandDTO {
 }
 
 /**
- * Returns gig by id for Command Center display when no event exists for this gig.
- * Relies on RLS to scope by workspace (same as CRM page); no explicit workspace filter.
+ * Returns event by id in GigCommandDTO shape for legacy callers.
+ * Fetches from unified events table; maps lifecycle_status and starts_at.
  */
-export async function getGigCommand(gigId: string): Promise<GigCommandDTO | null> {
+export async function getGigCommand(eventId: string): Promise<GigCommandDTO | null> {
   const supabase = await createClient();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return null;
 
   const { data: row, error } = await supabase
-    .from('gigs')
-    .select('id, title, status, event_date, location, client_name, workspace_id')
-    .eq('id', gigId)
+    .from('events')
+    .select('id, title, lifecycle_status, starts_at, location_name, workspace_id, organizations:client_id(name)')
+    .eq('id', eventId)
     .maybeSingle();
 
   if (error || !row) return null;
 
   const r = row as Record<string, unknown>;
+  const eventDate = r.starts_at ? String((r.starts_at as string).slice(0, 10)) : null;
+  const clientName = (r.organizations as { name?: string } | null)?.name ?? null;
+
   return {
     id: r.id as string,
     title: (r.title as string) ?? null,
-    status: (r.status as string) ?? null,
-    event_date: (r.event_date as string) ?? null,
-    location: (r.location as string) ?? null,
-    client_name: (r.client_name as string) ?? null,
+    status: (r.lifecycle_status as string) ?? null,
+    event_date: eventDate,
+    location: (r.location_name as string) ?? null,
+    client_name: clientName,
     workspace_id: r.workspace_id as string,
   };
 }
