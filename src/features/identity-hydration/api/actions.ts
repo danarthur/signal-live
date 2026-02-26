@@ -15,37 +15,41 @@ import type { Profile, WorkspaceMembership } from '../model/types';
 // ============================================================================
 
 /**
- * Updates the current user's profile
+ * Updates or creates the current user's profile (upsert)
+ * Ensures typing in onboarding creates a profile even when no row exists yet
  */
 export async function updateProfile(data: {
   fullName?: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   preferences?: Record<string, unknown>;
 }): Promise<{ success: boolean; error?: string; profile?: Profile }> {
   const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
-  const updateData: Record<string, unknown> = {};
-  if (data.fullName !== undefined) updateData.full_name = data.fullName;
-  if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl;
-  if (data.preferences !== undefined) updateData.preferences = data.preferences;
-  
+
+  const upsertData: Record<string, unknown> = {
+    id: user.id,
+  };
+  if (data.fullName !== undefined) upsertData.full_name = data.fullName;
+  if (data.avatarUrl !== undefined) upsertData.avatar_url = data.avatarUrl;
+  if (data.preferences !== undefined) upsertData.preferences = data.preferences;
+
   const { data: profile, error } = await supabase
     .from('profiles')
-    .update(updateData)
-    .eq('id', user.id)
+    .upsert(upsertData, { onConflict: 'id' })
     .select()
     .single();
-  
+
   if (error) {
     console.error('[Identity] Update profile error:', error);
     return { success: false, error: error.message };
   }
-  
+
   revalidatePath('/');
   return { success: true };
 }

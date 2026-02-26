@@ -78,22 +78,25 @@ export function EventDetailBlade({ eventId }: EventDetailBladeProps) {
       animate={{ x: 0 }}
       exit={{ x: DETAIL_WIDTH }}
       transition={springConfig}
-      className="fixed top-0 right-0 z-[60] h-screen flex flex-col border-l-2 border-[var(--glass-border)] bg-[var(--glass-bg)]/98 backdrop-blur-2xl shadow-2xl overflow-hidden antialiased"
+      className="fixed top-0 right-0 z-[60] h-screen flex flex-col border-l-2 border-[var(--glass-border)] bg-[var(--glass-bg)]/98 backdrop-blur-2xl shadow-[var(--glass-shadow)] overflow-hidden antialiased"
       style={{ width: DETAIL_WIDTH, maxWidth: '95vw' }}
       role="dialog"
       aria-label="Event details"
     >
       {/* Header: Back to List */}
       <div className="shrink-0 flex items-center gap-3 p-4 border-b border-[var(--glass-border)] bg-[var(--glass-bg)]/50 backdrop-blur-md">
-        <button
+        <motion.button
           type="button"
           onClick={backToList}
-          className="flex items-center gap-2 p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          whileTap={{ scale: 0.96 }}
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="flex items-center gap-2 p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           aria-label="Back to list"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="text-sm font-medium">Back to List</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* Content */}
@@ -106,7 +109,7 @@ export function EventDetailBlade({ eventId }: EventDetailBladeProps) {
           </div>
         )}
         {error && (
-          <p className="text-sm text-accent-clay py-4">{error}</p>
+          <p className="text-sm text-[var(--color-signal-error)] py-4">{error}</p>
         )}
         {!loading && !error && detail && (
           <div className="space-y-6">

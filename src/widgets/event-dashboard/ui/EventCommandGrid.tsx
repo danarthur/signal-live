@@ -14,6 +14,7 @@ import type { EventCommandDTO, EventLifecycleStatus } from '@/entities/event';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { SaveBar } from '@/shared/ui/surfaces';
 import { Textarea } from '@/shared/ui/textarea';
+import { CurrencyInput } from '@/shared/ui/currency-input';
 import { TimeCapsule } from '@/widgets/event-dashboard/ui/logistics';
 import { DollarSign, FileText, Calendar } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -262,16 +263,15 @@ export function EventCommandGrid({ event: initialEvent }: EventCommandGridProps)
         {/* Zone A: Hero – Title, Internal Code, Lifecycle Status */}
         <div className="md:col-span-12">
           <LiquidPanel className="relative min-h-[140px] flex flex-col justify-end p-6 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-silk/20 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-silk/6 via-transparent to-transparent pointer-events-none rounded-[inherit]" aria-hidden />
             <div className="relative z-10 flex flex-wrap items-end gap-3">
               <div className="min-w-0 flex-1">
                 <input
                   {...register('title')}
                   placeholder="Event title"
                   className={cn(
-                    'w-full min-w-0 bg-transparent text-2xl md:text-3xl font-light text-ink tracking-tight placeholder:text-ink-muted outline-none transition-[box-shadow] focus:ring-2 focus:ring-[var(--ring)] rounded-lg px-1 -mx-1',
-                    inputBase,
-                    '!border-0 !bg-transparent !py-0'
+                    'w-full min-w-0 rounded-xl border border-mercury bg-transparent py-2 px-3 text-2xl md:text-3xl font-light text-ink tracking-tight placeholder:text-ink-muted outline-none transition-[border-color,box-shadow]',
+                    'ring-1 ring-silk/15 focus:ring-2 focus:ring-neon-blue/30 focus:border-silk/30'
                   )}
                 />
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -356,16 +356,20 @@ export function EventCommandGrid({ event: initialEvent }: EventCommandGridProps)
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-ink-muted uppercase tracking-wider block mb-1">
+                <label htmlFor="event-crm-estimated-value" className="text-xs font-medium text-ink-muted uppercase tracking-wider block mb-1">
                   Est. value
                 </label>
-                <input
-                  type="number"
-                  step={0.01}
-                  min={0}
-                  {...register('crm_estimated_value', { valueAsNumber: true })}
-                  placeholder="0"
-                  className={inputBase}
+                <Controller
+                  name="crm_estimated_value"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="event-crm-estimated-value"
+                      value={field.value != null ? String(field.value) : ''}
+                      onChange={(v) => field.onChange(v.trim() === '' ? 0 : Number(v))}
+                      placeholder="0.00"
+                    />
+                  )}
                 />
               </div>
               <div className="flex items-center gap-3">

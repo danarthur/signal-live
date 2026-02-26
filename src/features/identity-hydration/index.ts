@@ -20,6 +20,9 @@ export {
   selectIntegrations,
 } from './model/session-store';
 
+// UI
+export { ProfileAvatarUpload } from './ui/ProfileAvatarUpload';
+
 // Server Actions
 export {
   updateProfile,

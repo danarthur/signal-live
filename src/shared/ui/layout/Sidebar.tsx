@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, Calendar, MessageSquare, Wallet, Settings, Sun, Moon, SunMoon } from 'lucide-react';
+import { LayoutGrid, Calendar, MessageSquare, Wallet, BookMarked, Settings, Sun, Moon, SunMoon } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { useEffect, useState } from 'react';
 import { useSession } from '@/shared/ui/providers/SessionContext';
@@ -34,6 +34,7 @@ export function Sidebar() {
     { id: 'overview', label: 'Overview', icon: LayoutGrid, href: '/lobby' },
     { id: 'brain', label: 'Brain', icon: MessageSquare, href: '/lobby' },
     { id: 'production', label: 'Production', icon: Calendar, href: '/crm' },
+    { id: 'catalog', label: 'Catalog', icon: BookMarked, href: '/catalog' },
     { id: 'finance', label: 'Finance', icon: Wallet, href: '/finance' },
   ];
 
@@ -46,10 +47,7 @@ export function Sidebar() {
   return (
     <motion.aside
       initial={false}
-      className={cn(
-        "liquid-panel h-full w-[88px] relative z-50 flex flex-col transition-colors duration-500 !p-0",
-        "!bg-[var(--sidebar-bg)] backdrop-blur-xl backdrop-saturate-150"
-      )}
+      className="sidebar-panel h-full w-[88px] relative z-50 flex flex-col !p-0 rounded-r-2xl"
     >
       <div className="py-6">
         <div className="mb-10 h-12 w-full flex items-center justify-center shrink-0">

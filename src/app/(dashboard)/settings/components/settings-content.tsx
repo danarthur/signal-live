@@ -6,8 +6,10 @@
 
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { 
   User, 
   Building2, 
@@ -23,8 +25,10 @@ import {
   MapPin,
   Plus,
   Clock,
+  Palette,
 } from 'lucide-react';
-import { updateProfile, uploadAvatar } from '@/features/identity-hydration';
+import { updateProfile } from '@/features/identity-hydration';
+import { ProfileAvatarUpload } from '@/features/identity-hydration/ui/ProfileAvatarUpload';
 import { QboConnectCard } from '@/features/auth/qbo-connect/ui/connect-card';
 import { TeamManagement } from './team-management';
 import { usePreferences } from '@/shared/ui/providers/PreferencesContext';
@@ -60,41 +64,19 @@ interface SettingsContentProps {
 }
 
 export function SettingsContent({ data, searchParams }: SettingsContentProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { militaryTime, setMilitaryTime } = usePreferences();
   
   // Profile state
   const [fullName, setFullName] = useState(data.profile.fullName);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(data.profile.avatarUrl);
-  const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [error, setError] = useState<string | null>(
     searchParams?.error === 'qbo_auth_failed' ? 'QuickBooks authorization failed. Try again.' : null
   );
   
   const springConfig = { type: 'spring', stiffness: 300, damping: 30 } as const;
-  
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setAvatarUploading(true);
-    setError(null);
-    
-    const formData = new FormData();
-    formData.append('avatar', file);
-    
-    const result = await uploadAvatar(formData);
-    
-    if (result.success && result.avatarUrl) {
-      setAvatarUrl(result.avatarUrl);
-    } else {
-      setError(result.error || 'Failed to upload avatar');
-    }
-    
-    setAvatarUploading(false);
-  };
   
   const handleSaveProfile = () => {
     setError(null);
@@ -120,7 +102,7 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...springConfig, delay: 0.1 }}
       >
-        <h1 className="text-3xl font-light text-ink tracking-tight">Kit</h1>
+        <h1 className="text-3xl font-light text-ink tracking-tight">Settings</h1>
         <p className="text-sm text-ink-muted font-light mt-1">
           Tune your account and integrations
         </p>
@@ -173,66 +155,13 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
         </div>
         
         <div className="grid md:grid-cols-[auto,1fr] gap-6 items-start">
-          {/* Avatar */}
-          <div className="relative group mx-auto md:mx-0">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarUpload}
-              className="hidden"
-            />
-            
-            <motion.button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={avatarUploading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              transition={springConfig}
-              className="w-24 h-24 rounded-2xl border-2 border-dashed border-[var(--glass-border)] 
-                hover:border-walnut/40 bg-ink/[0.02] flex items-center justify-center
-                transition-all duration-300 overflow-hidden relative"
-            >
-              {avatarUrl ? (
-                <>
-                  <img 
-                    src={avatarUrl} 
-                    alt="Avatar" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-ink/50 opacity-0 group-hover:opacity-100 
-                    transition-opacity flex items-center justify-center">
-                    <Camera className="w-6 h-6 text-canvas" />
-                  </div>
-                </>
-              ) : avatarUploading ? (
-                <Loader2 className="w-8 h-8 text-ink-muted animate-spin" />
-              ) : (
-                <div className="flex flex-col items-center gap-1">
-                  <User className="w-8 h-8 text-ink-muted/50" />
-                  <span className="text-[9px] text-ink-muted/50 uppercase tracking-wider">
-                    Avatar
-                  </span>
-                </div>
-              )}
-            </motion.button>
-            
-            {avatarUrl && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAvatarUrl(null);
-                }}
-                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white
-                  flex items-center justify-center opacity-0 group-hover:opacity-100
-                  transition-opacity hover:bg-red-600"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
+          {/* Avatar — upload, crop/zoom, save (same UX as add employee) */}
+          <ProfileAvatarUpload
+            value={avatarUrl}
+            onChange={(url) => setAvatarUrl(url || null)}
+            onUploadComplete={() => router.refresh()}
+            className="mx-auto md:mx-0"
+          />
           
           {/* Profile Form */}
           <div className="space-y-4 flex-1">
@@ -302,6 +231,31 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
         </div>
       </motion.section>
       
+      {/* Organization Identity – The Mirror */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...springConfig, delay: 0.18 }}
+        className="liquid-panel p-6 space-y-6"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+            <Palette className="w-5 h-5 text-ink-muted" />
+          </div>
+          <div>
+            <h2 className="text-lg font-medium text-ink">Establish Identity</h2>
+            <p className="text-xs text-ink-muted">Brand, logo, and how you appear to partners</p>
+          </div>
+        </div>
+        <Link
+          href="/settings/identity"
+          className="flex items-center justify-between w-full p-4 rounded-xl bg-ink/[0.02] border border-[var(--glass-border)] hover:border-[var(--glass-border-hover)] hover:bg-ink/5 transition-colors text-left"
+        >
+          <span className="text-sm font-medium text-ink">Open Identity Architect</span>
+          <ExternalLink className="w-4 h-4 text-ink-muted" />
+        </Link>
+      </motion.section>
+
       {/* Workspace Section */}
       {data.workspace && (
         <motion.section

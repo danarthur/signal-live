@@ -137,13 +137,21 @@ export async function getFinancials(
     progressPercentage,
   };
 
-  // 7. Proposals for this event (accepted/sent) for "Generate from Proposal"
-  const { data: proposals } = await supabase
-    .from('proposals')
-    .select('id, status')
+  // 7. Proposals for this event (via deal): accepted/sent for "Generate from Proposal"
+  const { data: dealRow } = await supabase
+    .from('deals')
+    .select('id')
     .eq('event_id', eventId)
-    .in('status', ['accepted', 'sent'])
-    .order('created_at', { ascending: false });
+    .maybeSingle();
+
+  const { data: proposals } = dealRow?.id
+    ? await supabase
+        .from('proposals')
+        .select('id, status')
+        .eq('deal_id', dealRow.id)
+        .in('status', ['accepted', 'sent'])
+        .order('created_at', { ascending: false })
+    : { data: [] as { id: string; status: string }[] };
 
   const proposalIds = (proposals ?? []).map((p) => ({
     id: p.id,

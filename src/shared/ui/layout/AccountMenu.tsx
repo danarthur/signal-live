@@ -10,7 +10,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { signOutAction } from '@/features/auth/smart-login';
+import { signOutAction } from '@/shared/api/auth/sign-out';
 
 interface AccountMenuProps {
   user: {
@@ -69,7 +69,7 @@ export function AccountMenu({ user }: AccountMenuProps) {
           transition-all duration-200"
       >
         {/* Avatar */}
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-ink/10 flex items-center justify-center">
+        <div className="avatar-primary w-8 h-8 bg-ink/10 flex items-center justify-center shrink-0">
           {user?.avatarUrl ? (
             <img 
               src={user.avatarUrl} 
@@ -99,7 +99,7 @@ export function AccountMenu({ user }: AccountMenuProps) {
             {/* User Info */}
             <div className="px-3 py-3 border-b border-[var(--glass-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl overflow-hidden bg-ink/10 flex items-center justify-center shrink-0">
+                <div className="avatar-primary w-10 h-10 bg-ink/10 flex items-center justify-center shrink-0">
                   {user?.avatarUrl ? (
                     <img 
                       src={user.avatarUrl} 
@@ -133,7 +133,7 @@ export function AccountMenu({ user }: AccountMenuProps) {
                   transition-colors text-left"
               >
                 <Settings className="w-4 h-4" />
-                <span className="text-sm">Kit</span>
+                <span className="text-sm">Settings</span>
               </button>
               
               <form action={signOutAction}>

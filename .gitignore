@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local AI context (internal only — not for version control)
+CLAUDE.md
+docs/

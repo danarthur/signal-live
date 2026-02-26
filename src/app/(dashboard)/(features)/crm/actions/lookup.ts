@@ -16,7 +16,8 @@ export type VenueSuggestion =
   | { type: 'create'; query: string };
 
 // -----------------------------------------------------------------------------
-// searchOmni: Search organizations + contacts, unified list
+// searchOmni: Search directory.entities (clients + contacts), unified list
+// Clients: type in ('organization', 'client'). Contacts: type = 'person'.
 // Limit 5 for speed. Returns type: 'org' | 'contact'.
 // -----------------------------------------------------------------------------
 export async function searchOmni(query: string): Promise<OmniResult[]> {
@@ -30,88 +31,98 @@ export async function searchOmni(query: string): Promise<OmniResult[]> {
     const supabase = await createClient();
     const pattern = `%${trimmed}%`;
 
-    const [orgsRes, contactsRes] = await Promise.all([
-    supabase
-      .from('organizations')
-      .select('id, name')
-      .eq('workspace_id', workspaceId)
-      .ilike('name', pattern)
-      .order('name')
-      .limit(3),
-    supabase
-      .from('contacts')
-      .select('id, first_name, last_name, email, organization_id')
-      .eq('workspace_id', workspaceId)
-      .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern}`)
-      .order('last_name')
-      .limit(3),
-  ]);
+    const [clientsRes, contactsRes] = await Promise.all([
+      supabase
+        .schema('directory')
+        .from('entities')
+        .select('id, type, display_name, attributes')
+        .eq('owner_workspace_id', workspaceId)
+        .in('type', ['organization', 'client'])
+        .ilike('display_name', pattern)
+        .order('display_name')
+        .limit(3),
+      supabase
+        .schema('directory')
+        .from('entities')
+        .select('id, type, display_name, attributes')
+        .eq('owner_workspace_id', workspaceId)
+        .eq('type', 'person')
+        .ilike('display_name', pattern)
+        .order('display_name')
+        .limit(3),
+    ]);
 
-  const results: OmniResult[] = [];
-  for (const row of orgsRes.data ?? []) {
-    results.push({ type: 'org', id: row.id, name: row.name });
-  }
-  for (const row of contactsRes.data ?? []) {
-    results.push({
-      type: 'contact',
-      id: row.id,
-      first_name: row.first_name,
-      last_name: row.last_name,
-      email: row.email ?? null,
-      organization_id: row.organization_id ?? null,
-      subtitle: row.email ?? undefined,
-    });
-  }
+    const results: OmniResult[] = [];
+    for (const row of clientsRes.data ?? []) {
+      results.push({ type: 'org', id: row.id, name: row.display_name ?? '' });
+    }
+    for (const row of contactsRes.data ?? []) {
+      const attrs = (row.attributes as Record<string, unknown>) ?? {};
+      const first = (attrs.first_name as string) ?? '';
+      const last = (attrs.last_name as string) ?? '';
+      const email = (attrs.email as string) ?? null;
+      const orgId = (attrs.organization_id as string) ?? null;
+      results.push({
+        type: 'contact',
+        id: row.id,
+        first_name: first,
+        last_name: last,
+        email,
+        organization_id: orgId,
+        subtitle: email ?? undefined,
+      });
+    }
 
-  return results.slice(0, 5);
+    return results.slice(0, 5);
   } catch {
     return [];
   }
 }
 
 // -----------------------------------------------------------------------------
-// getVenueSuggestions: "Liquid Memory" venue lookup
-// Heuristic 1: If organizationId, fetch venues previously used by this org in gigs.
-// Heuristic 2: If no org or no matches, search venues table by name/address.
+// getVenueSuggestions: "Liquid Memory" venue lookup from directory.entities
+// Filter by type = 'venue'. Name/address from display_name and attributes.
 // Heuristic 3: Return "Create new venue" signal when no match.
 // -----------------------------------------------------------------------------
 export async function getVenueSuggestions(
   query: string,
-  organizationId?: string | null
+  _organizationId?: string | null
 ): Promise<VenueSuggestion[]> {
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return [];
 
   try {
     const supabase = await createClient();
-  const trimmed = query.trim();
-  const pattern = trimmed.length >= 1 ? `%${trimmed}%` : '%';
+    const trimmed = query.trim();
+    const pattern = trimmed.length >= 1 ? `%${trimmed}%` : '%';
 
-  // Heuristic 1 (post-unification): Org-scoped venues from events not available (events have location_name, no venue_id).
-  // Heuristic 2: General venue search
-  const { data: venues } = await supabase
-    .from('venues')
-    .select('id, name, address, city, state')
-    .eq('workspace_id', workspaceId)
-    .or(`name.ilike.${pattern},address.ilike.${pattern},city.ilike.${pattern}`)
-    .order('name')
-    .limit(5);
+    const { data: venues } = await supabase
+      .schema('directory')
+      .from('entities')
+      .select('id, display_name, attributes')
+      .eq('owner_workspace_id', workspaceId)
+      .eq('type', 'venue')
+      .or(`display_name.ilike.${pattern},attributes->>address.ilike.${pattern},attributes->>city.ilike.${pattern}`)
+      .order('display_name')
+      .limit(5);
 
-  const fromTable: VenueSuggestion[] = (venues ?? []).map((v) => ({
-    type: 'venue' as const,
-    id: v.id,
-    name: v.name,
-    address: v.address ?? null,
-    city: v.city ?? null,
-    state: v.state ?? null,
-  }));
+    const fromTable: VenueSuggestion[] = (venues ?? []).map((v) => {
+      const attrs = (v.attributes as Record<string, unknown>) ?? {};
+      return {
+        type: 'venue' as const,
+        id: v.id,
+        name: (v.display_name as string) ?? '',
+        address: (attrs.address as string) ?? null,
+        city: (attrs.city as string) ?? null,
+        state: (attrs.state as string) ?? null,
+      };
+    });
 
-  // Heuristic 3: Create new venue signal
-  if (fromTable.length === 0 && trimmed.length >= 2) {
-    return [{ type: 'create', query: trimmed }];
-  }
+    if (fromTable.length === 0 && trimmed.length >= 2) {
+      return [{ type: 'create', query: trimmed }];
+    }
 
-  return fromTable;
+    return fromTable;
   } catch {
     return [];
   }

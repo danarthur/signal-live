@@ -12,6 +12,7 @@ const BLADE_PARAM = 'blade'; // day blade open for this date (view anchor stays 
 const EVENT_PARAM = 'event';
 const DRAWER_WIDTH = 400;
 const springConfig = { type: 'spring' as const, stiffness: 300, damping: 30 };
+const KEYCAP_SPRING = { type: 'spring' as const, stiffness: 300, damping: 30 };
 
 export interface DayBladeProps {
   /** Current date from URL (YYYY-MM-DD). */
@@ -108,61 +109,83 @@ export function DayBlade({ date, events, eventId, onDateChange }: DayBladeProps)
               <p className="text-sm text-ink-muted mt-0.5">{format(parsedDate, 'yyyy')}</p>
             )}
           </div>
-          <button
+          <motion.button
             type="button"
             onClick={close}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.04 }}
+            transition={KEYCAP_SPRING}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
-          </button>
+          </motion.button>
         </div>
         {/* < Prev [Today] Next > */}
         <div className="flex items-center justify-center gap-2 px-4 pb-4">
-          <button
+          <motion.button
             type="button"
             onClick={goPrev}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.04 }}
+            transition={KEYCAP_SPRING}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             aria-label="Previous day"
           >
             <span className="text-sm font-medium">&lt;</span>
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={goToday}
-            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.02 }}
+            transition={KEYCAP_SPRING}
+            className={`px-3 py-1.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
               isToday
                 ? 'bg-ink text-canvas'
                 : 'text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)]'
             }`}
           >
             Today
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={goNext}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.04 }}
+            transition={KEYCAP_SPRING}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             aria-label="Next day"
           >
             <span className="text-sm font-medium">&gt;</span>
-          </button>
+          </motion.button>
         </div>
       </div>
 
-      {/* Body: event list */}
+      {/* Body: event list with stagger */}
       <div className="flex-1 min-h-0 overflow-auto p-4 space-y-3">
         {dayEvents.length === 0 ? (
-          <p className="text-sm text-ink-muted py-8 text-center">No events this day</p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={springConfig}
+            className="text-sm text-ink-muted py-8 text-center"
+          >
+            No events this day
+          </motion.p>
         ) : (
-          dayEvents.map((event) => (
-            <div
+          dayEvents.map((event, i) => (
+            <motion.div
               key={event.id}
               ref={(node) => {
                 if (node) eventRefsMap.current.set(event.id, node);
               }}
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04, ...springConfig }}
             >
               <EventSummaryCard event={event} isFocused={eventId === event.id} />
-            </div>
+            </motion.div>
           ))
         )}
       </div>

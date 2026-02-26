@@ -32,12 +32,18 @@ export function DealDashboard({ data, className }: DealDashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
         {/* Left: Proposal Builder */}
         <div className="min-h-0">
-          <ProposalBuilder
-            eventId={gig.id}
-            workspaceId={gig.workspaceId}
-            initialProposal={data.activeProposal}
-            clientEmail={gig.clientEmail}
-          />
+          {data.dealId ? (
+            <ProposalBuilder
+              dealId={data.dealId}
+              workspaceId={gig.workspaceId}
+              initialProposal={data.activeProposal}
+              clientEmail={gig.clientEmail}
+            />
+          ) : (
+            <LiquidPanel className="p-6">
+              <p className="text-sm text-ink-muted">No deal linked to this event. Link from CRM to edit the proposal.</p>
+            </LiquidPanel>
+          )}
         </div>
 
         {/* Right: Deal Info — Client Card + Contract Status Card */}

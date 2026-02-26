@@ -157,7 +157,7 @@ export function WeekGrid({ events, viewDate, onEventClick, onDayClick, maxVisibl
               type="button"
               onClick={() => onDayClick(dayKey)}
               className={`p-2 text-center text-sm font-semibold tracking-tight hover:text-ink hover:bg-[var(--glass-bg-hover)] rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-inset ${
-                isToday ? 'text-ink ring-2 ring-inset ring-[var(--today-ring)] bg-[var(--today-bg)]' : 'text-ink-muted'
+                isToday ? 'text-ink ring-2 ring-inset ring-[var(--today-ring)] bg-[var(--today-bg)]' : 'text-ink/80'
               }`}
             >
               {format(d, 'EEE d')}
@@ -166,7 +166,7 @@ export function WeekGrid({ events, viewDate, onEventClick, onDayClick, maxVisibl
             <div
               key={dayKey}
               className={`p-2 text-center text-sm font-semibold tracking-tight rounded-lg ${
-                isToday ? 'text-ink ring-2 ring-inset ring-[var(--today-ring)] bg-[var(--today-bg)]' : 'text-ink-muted'
+                isToday ? 'text-ink ring-2 ring-inset ring-[var(--today-ring)] bg-[var(--today-bg)]' : 'text-ink/80'
               }`}
             >
               {format(d, 'EEE d')}
@@ -196,7 +196,7 @@ export function WeekGrid({ events, viewDate, onEventClick, onDayClick, maxVisibl
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-end pr-3 pl-1 text-xs font-medium text-ink-muted tracking-tight tabular-nums border-b border-[var(--glass-border)]/30"
+                  className="flex items-center justify-end pr-3 pl-1 text-xs font-medium text-ink/80 tracking-tight tabular-nums border-b border-[var(--glass-border)]/30"
                   style={{ height: rowHeight }}
                 >
                   {hourLabel(hour)}

@@ -55,7 +55,7 @@ export function WeekEvent({ position, onClick, variant = 'absolute' }: WeekEvent
   const pillContent = (
     <span className="flex flex-col min-w-0 text-left px-2.5 py-2 gap-1">
       <span className="text-xs font-medium text-ink truncate">{event.title}</span>
-      <span className="text-[10px] font-normal text-ink-muted tabular-nums truncate">{timeRange}</span>
+      <span className="text-[10px] font-normal text-ink/80 tabular-nums truncate">{timeRange}</span>
     </span>
   );
 
@@ -113,7 +113,7 @@ export function CollapsedBar({ summary }: CollapsedBarProps) {
         minHeight: 24,
       }}
     >
-      <span className="text-[10px] font-medium text-ink-muted truncate tracking-tight">
+      <span className="text-[10px] font-medium text-ink/80 truncate tracking-tight">
         {label}
       </span>
     </div>

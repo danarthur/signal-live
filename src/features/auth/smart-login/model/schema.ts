@@ -33,5 +33,18 @@ export const signupSchema = z.object({
     .min(2, 'Name must be at least 2 characters'),
 });
 
+/** Signup for passkey-only flow: no password; server creates user with random password. */
+export const signupForPasskeySchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
+  fullName: z
+    .string()
+    .min(1, 'Name is required')
+    .min(2, 'Name must be at least 2 characters'),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
+export type SignupForPasskeyInput = z.infer<typeof signupForPasskeySchema>;

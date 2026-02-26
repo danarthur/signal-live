@@ -14,6 +14,9 @@ type ArthurInputProps =
       onSubmit?: () => void;
       isExpanded?: boolean;
       isLoading?: boolean;
+      placeholder?: string;
+      showAttachment?: boolean;
+      showVoice?: boolean;
     }
   | {
   input: string;
@@ -28,10 +31,13 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
   const input = isNewProps ? props.value : props.input;
   const isLoading = isNewProps ? props.isLoading ?? false : props.isLoading;
   const isExpanded = isNewProps ? props.isExpanded : false;
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const { sendMessage } = useSession();
+
+  const placeholder = isNewProps ? props.placeholder ?? (attachedFile ? 'Add a note...' : 'Ask Signal...') : (attachedFile ? 'Add a note...' : 'Ask Signal...');
+  const showAttachment = isNewProps ? (props.showAttachment ?? true) : true;
+  const showVoice = isNewProps ? (props.showVoice ?? true) : true;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isNewProps) {
@@ -70,6 +76,11 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
 
   const handleSubmit = () => {
     if (!input.trim() && !attachedFile) return;
+    // Standalone mode: custom onSubmit only, no chat
+    if (isNewProps && props.onSubmit) {
+      props.onSubmit();
+      return;
+    }
     notifyInteraction();
     sendMessage({ text: input, file: attachedFile || undefined });
     setInputValue('');
@@ -93,23 +104,25 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
         isExpanded ? "rounded-3xl items-start pt-4 min-h-[120px]" : "rounded-full h-[68px]"
       )}
     >
-      <div className={cn("pl-2", isExpanded && "pt-1")}>
-      <input
-          type="file"
-        ref={fileInputRef}
-          onChange={handleFileSelect}
-          className="hidden"
-      />
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => fileInputRef.current?.click()}
-          className="text-ink-muted hover:text-ink transition-colors p-2 rounded-full hover:bg-stone/20"
-        >
-          <Paperclip size={20} strokeWidth={2} />
-        </motion.button>
-      </div>
+      {showAttachment && (
+        <div className={cn("pl-2", isExpanded && "pt-1")}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => fileInputRef.current?.click()}
+            className="text-ink-muted hover:text-ink transition-colors p-2 rounded-full hover:bg-stone/20"
+          >
+            <Paperclip size={20} strokeWidth={2} />
+          </motion.button>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col justify-center h-full relative">
         <AnimatePresence>
@@ -141,7 +154,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
             value={input}
             onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder={attachedFile ? 'Add a note...' : 'Ask Signal...'}
+          placeholder={attachedFile ? 'Add a note...' : placeholder}
             disabled={isLoading}
           className={cn(
             "w-full bg-transparent border-none outline-none text-ink placeholder:text-ink-muted/70 font-sans text-lg h-full py-2 disabled:opacity-50",
@@ -164,7 +177,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
             >
               <Loader2 size={20} className="animate-spin" />
             </motion.div>
-          ) : (input.trim() || attachedFile) ? (
+          ) : (input.trim() || attachedFile || (isNewProps && props.onSubmit && input.length > 0)) ? (
             <motion.button
               key="submit"
               initial={{ scale: 0, rotate: -90 }}
@@ -178,7 +191,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
             >
               <ArrowUp size={20} strokeWidth={2.5} />
             </motion.button>
-          ) : (
+          ) : showVoice ? (
             <motion.div
               key="voice"
               initial={{ opacity: 0, scale: 0.8 }}
@@ -187,6 +200,8 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
             >
               <ArthurVoice />
             </motion.div>
+          ) : (
+            <div key="empty" className="w-14 h-14" />
           )}
         </AnimatePresence>
       </div>

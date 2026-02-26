@@ -3,24 +3,42 @@
 import React from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
+import {
+  M3_FADE_THROUGH_ENTER,
+  M3_FADE_THROUGH_EXIT,
+  SIGNAL_PHYSICS,
+} from '@/shared/lib/motion-constants';
 
 interface LiquidPanelProps extends HTMLMotionProps<"div"> {
   children?: React.ReactNode;
   className?: string;
   hoverEffect?: boolean;
+  /** Levitation: floats above grid (scale, deeper shadow) — medium urgency */
+  levitate?: boolean;
+  /** Subsurface ION glow: edge glows from within when ION has a contextual suggestion */
+  ionHint?: boolean;
 }
 
-export function LiquidPanel({ children = null, className, hoverEffect = false, ...props }: LiquidPanelProps) {
+export function LiquidPanel({
+  children = null,
+  className,
+  hoverEffect = false,
+  levitate = false,
+  ionHint = false,
+  ...props
+}: LiquidPanelProps) {
   return (
     <motion.div
       initial={false}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 8, scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      whileHover={hoverEffect ? { scale: 1.005, opacity: 1 } : undefined}
+      exit={{ opacity: 0, y: 8, scale: 0.98, transition: M3_FADE_THROUGH_EXIT }}
+      transition={SIGNAL_PHYSICS}
+      whileHover={hoverEffect && !levitate ? { y: -2, scale: 1.002 } : undefined}
       className={cn(
-        "liquid-card p-6 relative overflow-hidden transition-colors duration-300",
-        hoverEffect && "hover:translate-y-[-2px] hover:scale-[1.002]",
+        "liquid-card p-6 relative overflow-hidden transition-all duration-300",
+        !hoverEffect && !levitate && "hover:transform-none",
+        levitate && "liquid-card-levitation",
+        ionHint && "liquid-card-ion-glow",
         className
       )}
       {...props}

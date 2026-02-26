@@ -38,8 +38,6 @@ export async function getSession(): Promise<Session> {
       .from('workspace_members')
       .select('workspace_id, role, workspaces:workspace_id (id, name)')
       .eq('user_id', user.id)
-      .order('role')
-      .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
 

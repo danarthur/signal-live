@@ -1,6 +1,7 @@
 /**
  * Calendar feature - Server Action: fetch events in range
- * Fetches from unified events table. Overlap: (starts_at <= rangeEnd) AND (ends_at >= rangeStart).
+ * Fetches from ops.events (joined with projects for workspace scoping).
+ * Overlap: (start_at <= rangeEnd) AND (end_at >= rangeStart).
  * @module features/calendar/api/get-events
  */
 
@@ -8,63 +9,46 @@ import 'server-only';
 
 import { createClient } from '@/shared/api/supabase/server';
 import { getCalendarEventsInputSchema } from '../model/schema';
-import type { CalendarEvent, EventStatus } from '../model/types';
+import type { CalendarEvent } from '../model/types';
 import { getEventColor } from '../model/types';
 
 export type GetCalendarEventsInput = import('../model/schema').GetCalendarEventsInputSchema;
 
 // =============================================================================
-// event_status enum – must match Database['public']['Enums']['event_status']
+// Raw row from ops.events + joined ops.projects
 // =============================================================================
 
-const EVENT_STATUS_VALUES: EventStatus[] = ['confirmed', 'hold', 'cancelled', 'planned'];
-
-function parseEventStatus(value: string | null): EventStatus {
-  if (value && EVENT_STATUS_VALUES.includes(value as EventStatus)) {
-    return value as EventStatus;
-  }
-  return 'planned';
-}
-
-// =============================================================================
-// Raw row from DB (events + joined projects.name)
-// =============================================================================
-
-/** Events row (unified table). */
-interface EventsRow {
+interface OpsEventsRow {
   id: string;
-  title: string | null;
-  starts_at: string;
-  ends_at: string;
-  status: string | null;
-  location_name: string | null;
-  workspace_id: string;
-  projects?: { name: string } | { name: string }[] | null;
-  project?: { name: string } | null;
+  name: string | null;
+  start_at: string;
+  end_at: string;
+  project?: { workspace_id: string; name: string } | null;
+  projects?: { workspace_id: string; name: string } | { workspace_id: string; name: string }[] | null;
 }
 
-function projectName(row: EventsRow): string | null {
+function projectFromRow(row: OpsEventsRow): { workspace_id: string; name: string } | null {
   const p = row.projects ?? row.project;
   if (!p) return null;
-  if (Array.isArray(p)) return p[0]?.name ?? null;
-  return p.name ?? null;
+  if (Array.isArray(p)) return p[0] ?? null;
+  return p;
 }
 
-function toCalendarEvent(row: EventsRow): CalendarEvent {
-  const status = parseEventStatus(row.status);
-  const color = getEventColor(status);
-  const start = row.starts_at ?? (row as { start_at?: string }).start_at ?? new Date().toISOString();
-  const end = row.ends_at ?? (row as { end_at?: string }).end_at ?? start;
+function toCalendarEvent(row: OpsEventsRow): CalendarEvent | null {
+  const project = projectFromRow(row);
+  if (!project) return null;
+  const start = row.start_at ?? new Date().toISOString();
+  const end = row.end_at ?? start;
   return {
     id: String(row.id ?? ''),
-    title: row.title ?? '',
+    title: row.name ?? '',
     start,
     end,
-    status,
-    projectTitle: projectName(row),
-    location: row.location_name ?? null,
-    color,
-    workspaceId: row.workspace_id ?? '',
+    status: 'planned',
+    projectTitle: project.name ?? null,
+    location: null,
+    color: getEventColor('planned'),
+    workspaceId: project.workspace_id ?? '',
     gigId: null,
     clientName: null,
   };
@@ -76,8 +60,8 @@ function toCalendarEvent(row: EventsRow): CalendarEvent {
 
 /**
  * Fetches calendar events overlapping the given range.
- * Fetches calendar events from public.events (unified table).
- * Security: workspace_id enforced; RLS must scope by workspace.
+ * Fetches from ops.events (joined with ops.projects for workspace scoping).
+ * Security: workspace_id enforced via project join; RLS must scope by workspace.
  */
 export async function getCalendarEvents(
   input: GetCalendarEventsInput
@@ -97,14 +81,14 @@ export async function getCalendarEvents(
       return [];
     }
 
-    // Fetch events from unified events table
     const { data: eventRowsRaw, error } = await supabase
+      .schema('ops')
       .from('events')
-      .select('id, title, starts_at, ends_at, status, location_name, workspace_id')
-      .eq('workspace_id', workspaceId)
-      .lte('starts_at', end)
-      .gte('ends_at', start)
-      .order('starts_at', { ascending: true })
+      .select('id, name, start_at, end_at, project:projects!inner(workspace_id, name)')
+      .eq('projects.workspace_id', workspaceId)
+      .lte('start_at', end)
+      .gte('end_at', start)
+      .order('start_at', { ascending: true })
       .limit(5000);
 
     if (error) {
@@ -112,10 +96,9 @@ export async function getCalendarEvents(
       return [];
     }
 
-    const result: CalendarEvent[] = (eventRowsRaw ?? []).map((r) => {
-      const row = { ...r, projects: null, project: null } as unknown as EventsRow;
-      return toCalendarEvent(row);
-    });
+    const result: CalendarEvent[] = (eventRowsRaw ?? [])
+      .map((r) => toCalendarEvent(r as OpsEventsRow))
+      .filter((e): e is CalendarEvent => e !== null);
 
     result.sort((a, b) => a.start.localeCompare(b.start));
     return result;

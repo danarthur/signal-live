@@ -101,35 +101,43 @@ export async function getGigDealRoom(eventId: string): Promise<DealRoomDTO | nul
     clientEmail: clientEmail ?? null,
   };
 
-  // 2. Latest proposal for this event (and its items)
-  const { data: proposals } = await supabase
-    .from('proposals')
-    .select('*')
+  // 2. Deal linked to this event, then latest proposal for that deal
+  const { data: dealRow } = await supabase
+    .from('deals')
+    .select('id')
     .eq('event_id', eventId)
-    .order('created_at', { ascending: false })
-    .limit(1);
+    .maybeSingle();
 
   let activeProposal: ProposalWithItems | null = null;
   let totalValue = 0;
 
-  if (proposals && proposals.length > 0) {
-    const proposal = proposals[0];
-    const { data: items } = await supabase
-      .from('proposal_items')
+  if (dealRow?.id) {
+    const { data: proposals } = await supabase
+      .from('proposals')
       .select('*')
-      .eq('proposal_id', proposal.id)
-      .order('sort_order', { ascending: true });
+      .eq('deal_id', dealRow.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    const itemList = items ?? [];
-    totalValue = itemList.reduce(
-      (sum, row) => sum + Number(row.quantity ?? 1) * Number(row.unit_price ?? 0),
-      0
-    );
+    if (proposals && proposals.length > 0) {
+      const proposal = proposals[0];
+      const { data: items } = await supabase
+        .from('proposal_items')
+        .select('*')
+        .eq('proposal_id', proposal.id)
+        .order('sort_order', { ascending: true });
 
-    activeProposal = {
-      ...proposal,
-      items: itemList,
-    };
+      const itemList = items ?? [];
+      totalValue = itemList.reduce(
+        (sum, row) => sum + Number(row.quantity ?? 1) * Number(row.unit_price ?? 0),
+        0
+      );
+
+      activeProposal = {
+        ...proposal,
+        items: itemList,
+      };
+    }
   }
 
   // 3. Latest contract for this event
@@ -170,6 +178,7 @@ export async function getGigDealRoom(eventId: string): Promise<DealRoomDTO | nul
 
   return {
     gig,
+    dealId: dealRow?.id ?? null,
     pipeline,
     activeProposal,
     contract: contractData,

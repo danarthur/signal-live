@@ -14,7 +14,7 @@ const typeIcons: Record<CueType, { icon: typeof Mic; color: string; bg: string }
   audio: { icon: Video, color: 'text-blue-500', bg: 'bg-blue-500/10' },
   lighting: { icon: Sun, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   video: { icon: Video, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  logistics: { icon: Truck, color: 'text-stone-500', bg: 'bg-stone-500/10' },
+  logistics: { icon: Truck, color: 'text-ink-muted', bg: 'bg-ink/10' },
 };
 
 const DEFAULT_START_TIME = '18:00';
@@ -163,9 +163,9 @@ export function RunOfShow({
                             className={cn(
                               "!p-3 flex items-center gap-4 transition-all duration-200 liquid-panel-nested",
                               snapshot.isDragging
-                                ? "shadow-2xl scale-[1.02] z-50 ring-1 ring-emerald-500/50"
+                                ? "shadow-2xl scale-[1.02] z-50 ring-1 ring-[var(--color-signal-success)]/50"
                                 : "hover:border-[var(--glass-border-hover)]",
-                              cue.id === selectedCueId && "ring-1 ring-emerald-500/40",
+                              cue.id === selectedCueId && "ring-1 ring-[var(--color-signal-success)]/40",
                               cue.id.startsWith('temp-') && "opacity-60 grayscale"
                             )}
                             onClick={() => onSelectCue?.(cue.id)}
@@ -187,11 +187,11 @@ export function RunOfShow({
                             </div>
 
                             {/* CONNECTOR */}
-                            <div className="h-8 w-px bg-stone/20 relative hidden md:block">
+                            <div className="h-8 w-px bg-ink/20 relative hidden md:block">
                               <div
                                 className={cn(
                                   "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full",
-                                  Meta.color.replace('text-', 'bg-')
+                                  Meta.color === 'text-ink-muted' ? 'bg-ink-muted' : Meta.color.replace('text-', 'bg-')
                                 )}
                               />
                             </div>

@@ -4,7 +4,10 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { format, addMonths, subMonths, addWeeks, subWeeks, addYears, subYears } from 'date-fns';
+import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+
+const KEYCAP_SPRING = { type: 'spring' as const, stiffness: 300, damping: 30 };
 import type { CalendarEvent, EventStatus } from '@/features/calendar/model/types';
 import type { CalendarViewType } from '@/features/calendar/lib/date-ranges';
 import { MonthGrid } from '@/features/calendar/ui/grids/month-grid';
@@ -189,49 +192,61 @@ export function CalendarShell({ events, initialView, initialDate }: CalendarShel
       {/* Toolbar: nav + title + view selector + filter */}
       <header className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-[var(--glass-border)] bg-[var(--glass-bg)]/50 backdrop-blur-xl rounded-t-2xl shrink-0">
         <div className="flex items-center gap-2">
-          <button
+          <motion.button
             type="button"
             onClick={goPrev}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.04 }}
+            transition={KEYCAP_SPRING}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             aria-label="Previous"
           >
             <ChevronLeft className="w-5 h-5" />
-          </button>
+          </motion.button>
           <h1 className="text-xl md:text-3xl font-semibold tracking-tight text-ink min-w-[140px] md:min-w-[200px] text-center" style={{ letterSpacing: '-0.02em' }}>
             {headerLabel}
           </h1>
-          <button
+          <motion.button
             type="button"
             onClick={goNext}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.04 }}
+            transition={KEYCAP_SPRING}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             aria-label="Next"
           >
             <ChevronRight className="w-5 h-5" />
-          </button>
+          </motion.button>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-xl border border-[var(--glass-border)] overflow-hidden bg-ink/[0.03]">
             {VIEWS.map(({ value, label }) => (
-              <button
+              <motion.button
                 key={value}
                 type="button"
                 onClick={() => onViewChange(value)}
-                className={`px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: view === value ? 1 : 1.02 }}
+                transition={KEYCAP_SPRING}
+                className={`px-4 py-2.5 text-sm font-medium ${
                   view === value
                     ? 'bg-ink text-canvas'
                     : 'text-ink-muted hover:bg-[var(--glass-bg-hover)] hover:text-ink'
                 }`}
               >
                 {label}
-              </button>
+              </motion.button>
             ))}
           </div>
           <div className="relative" ref={filterRef}>
-            <button
+            <motion.button
               ref={filterButtonRef}
               type="button"
               onClick={() => setFilterOpen((o) => !o)}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[var(--glass-border)] text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
+              whileTap={{ scale: 0.96 }}
+              whileHover={{ scale: 1.02 }}
+              transition={KEYCAP_SPRING}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[var(--glass-border)] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
                 filterOpen
                   ? 'bg-ink text-canvas'
                   : 'bg-ink/[0.03] text-ink-muted hover:bg-[var(--glass-bg-hover)] hover:text-ink'
@@ -241,7 +256,7 @@ export function CalendarShell({ events, initialView, initialDate }: CalendarShel
             >
               <Filter className="w-4 h-4" />
               Filter
-            </button>
+            </motion.button>
             {filterOpen &&
               filterPosition &&
               typeof document !== 'undefined' &&
@@ -300,8 +315,12 @@ export function CalendarShell({ events, initialView, initialDate }: CalendarShel
         </div>
       </header>
 
-      {/* Grid area — fills remaining height, scrolls when content overflows */}
-      <div className="relative z-10 flex-1 min-h-0 overflow-auto p-4 md:p-6 bg-[var(--glass-bg)]/20 backdrop-blur-sm rounded-b-2xl flex flex-col">
+      {/* Grid area — fills remaining height, scrolls when content overflows; year view uses overflow-visible so hover-expanded months aren't clipped */}
+      <div
+        className={`relative z-10 flex-1 min-h-0 p-4 md:p-6 bg-[var(--glass-bg)]/20 backdrop-blur-sm rounded-b-2xl flex flex-col ${
+          view === 'year' ? 'overflow-visible' : 'overflow-auto'
+        }`}
+      >
         {view === 'month' && (
           <div className="flex-1 min-h-0 flex flex-col">
             <MonthGrid

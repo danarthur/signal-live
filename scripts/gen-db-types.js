@@ -42,7 +42,7 @@ if (!projectRef || projectRef.length < 10) {
   process.exit(1);
 }
 
-const cmd = `npx supabase gen types typescript --project-id ${projectRef} --schema public`;
+const cmd = `npx supabase gen types typescript --project-id ${projectRef} --schema public,directory,cortex,ops,finance`;
 const result = execSync(cmd, { encoding: 'utf-8', cwd: root });
 fs.writeFileSync(outFile, result, 'utf8');
 console.log('Wrote src/types/supabase.ts');

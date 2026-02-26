@@ -106,27 +106,31 @@ export function RevenueChart({ data, className = '' }: RevenueChartProps) {
           </linearGradient>
         </defs>
         
-        {/* Area Fill */}
-        <motion.path
-          d={areaPath}
-          fill="url(#revenueGradient)"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-        />
+        {/* Area Fill — only render when path is valid (starts with M) to avoid "Expected moveto path command" error */}
+        {areaPath?.startsWith('M') && (
+          <motion.path
+            d={areaPath}
+            fill="url(#revenueGradient)"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+          />
+        )}
         
         {/* Line */}
-        <motion.path
-          d={pathData}
-          fill="none"
-          stroke="var(--walnut)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ ...springConfig, duration: 1.5 }}
-        />
+        {pathData?.startsWith('M') && (
+          <motion.path
+            d={pathData}
+            fill="none"
+            stroke="var(--walnut)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ ...springConfig, duration: 1.5 }}
+          />
+        )}
         
         {/* Data Points */}
         {chartData.map((point, i) => {

@@ -1,45 +1,88 @@
 const fs = require('fs');
 const path = require('path');
 
-// Target the generated Supabase types
-// Note: Adjust this path if your types are located elsewhere (e.g. src/shared/api/supabase/database.types.ts)
 const TYPES_PATH = path.join(process.cwd(), 'src/types/supabase.ts');
 
-const SYSTEM_TABLES = ['schema_migrations', 'users', 'audit_logs']; // Tables that might use global IDs
+function scanSignalArchitecture() {
+  console.log("\x1b[36m%s\x1b[0m", "🛡️  Signal Guardian: Auditing V2 Architecture...\n");
 
-function scanForTenancy() {
-    console.log("\x1b[36m%s\x1b[0m", "🛡️  Supabase Guardian: Auditing Multi-Tenancy...");
+  if (!fs.existsSync(TYPES_PATH)) {
+    console.error(`❌ Types file not found at: ${TYPES_PATH}`);
+    console.error("   Run 'npm run db:gen-types' (or equivalent) to generate them.");
+    return;
+  }
 
-    if (!fs.existsSync(TYPES_PATH)) {
-        console.error(`❌ Types file not found at: ${TYPES_PATH}`);
-        console.error("   Run 'npm run db:gen-types' to generate them.");
-        // We exit with 0 here because we don't want to block scaffolding if types aren't generated yet,
-        // but we warn heavily.
-        return;
-    }
+  const content = fs.readFileSync(TYPES_PATH, 'utf8');
+  let passed = 0;
+  let warned = 0;
 
-    const content = fs.readFileSync(TYPES_PATH, 'utf8');
-    
-    // Regex to find table definitions in the Database interface
-    // This is a heuristic scan. It looks for "Tables" section and checks keys.
-    // Real AST parsing would be better, but regex is sufficient for quick checks.
-    
-    // 1. Check if workspace_id exists generally in the file
-    // We expect almost every table to have this.
-    if (!content.includes('workspace_id')) {
-        console.warn("⚠️  WARNING: 'workspace_id' not found in type definition. Is multi-tenancy implemented?");
-    } else {
-        console.log("✅ 'workspace_id' column detected in schema definition.");
-    }
+  // 1. Multi-tenancy: workspace_id
+  if (content.includes('workspace_id')) {
+    console.log("✅ 'workspace_id' column detected (multi-tenancy present).");
+    passed++;
+  } else {
+    console.warn("⚠️  WARNING: 'workspace_id' not found in types. Is multi-tenancy implemented?");
+    warned++;
+  }
 
-    // 2. Simple check for RLS usage in comments or definition
-    // Supabase CLI often injects comments about RLS.
-    if (!content.includes('Row Level Security')) {
-       // Note: Type definitions often don't include RLS info, so this is soft.
-    }
+  // 2. Workspace resolution helper
+  if (content.includes('get_user_workspace_ids') || content.includes('get_my_workspace_ids')) {
+    console.log("✅ Workspace resolution helper detected (get_user_workspace_ids or get_my_workspace_ids).");
+    passed++;
+  } else {
+    console.warn("⚠️  WARNING: No workspace helper function in types. RLS may use inline subqueries.");
+    warned++;
+  }
 
-    console.log("✅ Audit Complete. Remember: The database is the only source of truth.");
-    console.log("   (Manual verification of RLS policies in SQL migrations is still required).");
+  // 3. Entity-centric resolution
+  if (content.includes('get_my_entity_id') || content.includes('signal_current_entity_id')) {
+    console.log("✅ Entity resolution helper detected (get_my_entity_id / signal_current_entity_id).");
+    passed++;
+  } else if (content.includes('entities') && content.includes('affiliations')) {
+    console.warn("⚠️  WARNING: Entity-centric tables exist but no entity resolution helper in types.");
+    warned++;
+  }
+
+  // 4. Schema separation (V2 target)
+  const schemas = ['directory', 'cortex', 'ops', 'finance'];
+  const foundSchemas = schemas.filter((s) => content.includes(s));
+  if (foundSchemas.length > 0) {
+    console.log(`✅ V2 schemas found: ${foundSchemas.join(', ')}.`);
+    passed++;
+  } else {
+    console.warn("⚠️  NOTE: V2 schemas (directory, cortex, ops) not in types. Current state: public + finance.");
+    warned++;
+  }
+
+  // 5. Ghost Protocol (V2) vs. current (is_ghost)
+  if (content.includes('owner_workspace_id')) {
+    console.log("✅ 'owner_workspace_id' detected — Ghost Protocol (V2) in use.");
+    passed++;
+  } else if (content.includes('is_ghost')) {
+    console.log("✅ 'is_ghost' detected — current Ghost model in use.");
+    passed++;
+  } else if (content.includes('entities')) {
+    console.warn("⚠️  WARNING: 'entities' exists but neither 'owner_workspace_id' nor 'is_ghost' found.");
+    warned++;
+  }
+
+  // 6. Cortex (V2): source_entity_id in relationships
+  if (content.includes('cortex') && !content.includes('source_entity_id')) {
+    console.error("❌ CRITICAL: 'cortex' schema present but 'source_entity_id' not found.");
+  } else if (content.includes('cortex') && content.includes('source_entity_id')) {
+    console.log("✅ Cortex relationships define source_entity_id.");
+    passed++;
+  }
+
+  // 7. ops.assignments reminder (RLS gap - Supabase advisor catches this)
+  if (content.includes('ops') && content.includes('assignments')) {
+    console.log("ℹ️  NOTE: Verify ops.assignments has RLS policies. Run Supabase security advisor if available.");
+  }
+
+  console.log("\n✅ Audit complete. Remember: Trust the Schema, Distrust the Client.");
+  if (warned > 0) {
+    console.log(`   (${warned} advisory note(s). Manual verification of RLS in migrations is still required.)`);
+  }
 }
 
-scanForTenancy();
+scanSignalArchitecture();

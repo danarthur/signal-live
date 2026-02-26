@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { cn } from '@/shared/lib/utils';
+import {
+  M3_FADE_THROUGH_ENTER,
+  M3_SHARED_AXIS_Y_VARIANTS,
+  M3_STAGGER_CHILDREN,
+  M3_STAGGER_DELAY,
+} from '@/shared/lib/motion-constants';
 
 type FinanceRow = {
   id: string;
@@ -56,12 +63,12 @@ export function FinancialUpdates() {
     <div className="w-full space-y-4">
       {/* Header - Matching your 'Telemetry' style */}
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono text-ink-muted uppercase tracking-widest">
+        <h3 className="text-xs font-medium font-mono text-muted uppercase tracking-widest">
           Cash Flow
         </h3>
         <span className="flex h-1.5 w-1.5 items-center justify-center">
-             <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-signal-success opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-signal-success" />
         </span>
       </div>
 
@@ -70,58 +77,83 @@ export function FinancialUpdates() {
         {loading ? (
           <LiquidPanel className="h-24 w-full animate-pulse !p-0" />
         ) : error ? (
-          <div className="py-6 text-center text-xs text-ink-muted italic">
+          <div className="py-6 text-center text-xs text-muted italic leading-relaxed">
             {error}
           </div>
         ) : invoices.length === 0 ? (
-          <div className="py-6 text-center text-xs text-ink-muted italic">
+          <div className="py-6 text-center text-xs text-muted italic leading-relaxed">
             No active invoices
           </div>
         ) : (
-          invoices.map((inv) => (
-            <LiquidPanel
-              key={inv.id}
-              hoverEffect
-              className="group relative flex cursor-pointer items-center justify-between !p-3 transition-all liquid-panel-nested"
-            >
-              <div className="flex flex-col">
-                <span className="font-serif text-sm text-ink group-hover:text-ink">
-                  {inv.client_name || 'Client Payment'}
-                </span>
-                <span className="font-mono text-[10px] text-ink-muted">
-                  {inv.invoice_number ? `INV-${inv.invoice_number.slice(0, 5)}` : 'INV-00000'}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs font-medium text-ink">
-                  ${inv.amount?.toLocaleString() ?? '0'}
-                </span>
-                <StatusDot status={inv.status || 'draft'} />
-              </div>
-            </LiquidPanel>
-          ))
+          <motion.div
+            className="flex flex-col gap-2"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: {
+                transition: {
+                  staggerChildren: M3_STAGGER_CHILDREN,
+                  delayChildren: M3_STAGGER_DELAY,
+                },
+              },
+              hidden: {},
+            }}
+          >
+            {invoices.map((inv) => (
+              <motion.div
+                key={inv.id}
+                variants={M3_SHARED_AXIS_Y_VARIANTS}
+                transition={M3_FADE_THROUGH_ENTER}
+              >
+                <LiquidPanel
+                  hoverEffect
+                  className="group relative flex cursor-pointer items-center justify-between !p-3 transition-all liquid-panel-nested"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm text-ceramic group-hover:text-ceramic">
+                      {inv.client_name || 'Client Payment'}
+                    </span>
+                    <span className="font-mono text-[10px] text-muted leading-relaxed">
+                      {inv.invoice_number ? `INV-${inv.invoice_number.slice(0, 5)}` : 'INV-00000'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs font-medium text-ceramic">
+                      ${inv.amount?.toLocaleString() ?? '0'}
+                    </span>
+                    <StatusDot status={inv.status || 'draft'} />
+                  </div>
+                </LiquidPanel>
+              </motion.div>
+            ))}
+          </motion.div>
         )}
       </div>
 
       {/* Footer Action */}
       <Link href="/finance" className="block w-full">
-        <button className="w-full rounded-lg border border-[var(--glass-border)] py-2 text-[10px] font-medium uppercase tracking-wider text-ink-muted transition-colors hover:bg-ink hover:text-[var(--background)]">
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={M3_FADE_THROUGH_ENTER}
+          className="w-full m3-btn-outlined text-[10px] uppercase tracking-wider"
+        >
           View Ledger
-        </button>
+        </motion.button>
       </Link>
     </div>
   );
 }
 
 function StatusDot({ status }: { status: string }) {
-  const colors = {
-    paid: "bg-emerald-500",
-    sent: "bg-amber-400",
-    overdue: "bg-rose-400",
-    draft: "bg-stone-300",
+  const colors: Record<string, string> = {
+    paid: 'bg-signal-success',
+    sent: 'bg-signal-warning',
+    overdue: 'bg-signal-error',
+    draft: 'bg-surface-100',
   };
-  const color = colors[status as keyof typeof colors] || colors.draft;
-
+  const color = colors[status] ?? colors.draft;
   return <div className={cn('h-1.5 w-1.5 rounded-full', color)} />;
 }

@@ -7,8 +7,9 @@
 // UI Components
 export { SmartLoginForm } from './ui/smart-login-form';
 
-// Server Actions
-export { signInAction, signUpAction, signOutAction, signOut } from './api/actions';
+// Server Actions (signOutAction lives in shared for FSD; re-export here for backward compatibility)
+export { signOutAction } from '@/shared/api/auth/sign-out';
+export { signInAction, signUpAction, signOut } from './api/actions';
 
 // Types
 export type { 

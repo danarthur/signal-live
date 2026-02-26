@@ -45,9 +45,9 @@ export default async function EventFinancePage({
     <div className="flex-1 min-h-0 p-6 overflow-y-auto min-h-[60vh]">
       <header className="mb-6 flex items-center gap-4 shrink-0 flex-wrap">
         <Link
-          href={`/events/${data.eventId}`}
+          href={`/events/g/${data.eventId}`}
           className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-          aria-label="Back to Command Center"
+          aria-label="Back to event"
         >
           <ArrowLeft size={20} />
         </Link>
@@ -58,11 +58,11 @@ export default async function EventFinancePage({
           <p className="text-sm text-ink-muted mt-0.5">Finance</p>
         </div>
         <Link
-          href={`/events/${data.eventId}`}
+          href={`/events/g/${data.eventId}`}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-ink-muted hover:text-ink hover:bg-[var(--glass-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         >
           <LayoutDashboard size={18} />
-          Command Center
+          Event grid
         </Link>
         <Link
           href={`/events/${data.eventId}/deal`}

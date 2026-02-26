@@ -9,8 +9,8 @@ import { createClient } from '@/shared/api/supabase/server';
 import { OnboardingWizard } from './components/onboarding-wizard';
 
 export const metadata = {
-  title: 'Welcome to Signal',
-  description: 'Set up your Signal workspace',
+  title: 'Setup | Signal',
+  description: 'One-time setup for your workspace',
 };
 
 export const dynamic = 'force-dynamic';
@@ -24,24 +24,27 @@ async function getOnboardingState() {
     redirect('/login');
   }
   
-  // Fetch profile - use maybeSingle() to handle case where profile doesn't exist yet
-  const { data: profile, error: profileError } = await supabase
+  // Fetch profile - resilient when table missing or RLS blocks (e.g. no row yet)
+  let profile: { full_name?: string | null; avatar_url?: string | null; onboarding_completed?: boolean | null; onboarding_step?: number | null } | null = null;
+  const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('*')
+    .select('full_name, avatar_url, onboarding_completed, onboarding_step')
     .eq('id', user.id)
     .maybeSingle();
   
-  if (profileError) {
-    console.error('[Onboarding] Profile fetch error:', profileError);
+  if (!profileError) {
+    profile = profileData;
   }
+  // When profile fetch fails (table missing, RLS, or no row), treat as no profile and use auth metadata
   
   // If onboarding is already complete, redirect to dashboard
   if (profile?.onboarding_completed) {
     redirect('/lobby');
   }
   
-  // Fetch existing workspaces - don't use single() since user might have 0 or many
-  const { data: workspaces, error: workspaceError } = await supabase
+  // Fetch existing workspaces
+  let workspaces: { workspace_id: string; workspaces: { id: string; name: string } | null }[] = [];
+  const { data: workspaceData, error: workspaceError } = await supabase
     .from('workspace_members')
     .select(`
       workspace_id,
@@ -50,11 +53,11 @@ async function getOnboardingState() {
     `)
     .eq('user_id', user.id);
   
-  if (workspaceError) {
-    console.error('[Onboarding] Workspace fetch error:', workspaceError);
+  if (!workspaceError && workspaceData) {
+    workspaces = workspaceData as typeof workspaces;
   }
   
-  // Get the full name from profile, or fallback to auth user metadata
+  // Full name: profile first, then auth user metadata
   const fullName = profile?.full_name 
     || user.user_metadata?.full_name 
     || user.user_metadata?.name 
@@ -67,12 +70,12 @@ async function getOnboardingState() {
     },
     profile: {
       fullName,
-      avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url || null,
-      onboardingStep: profile?.onboarding_step || 0,
+      avatarUrl: profile?.avatar_url ?? user.user_metadata?.avatar_url ?? null,
+      onboardingStep: profile?.onboarding_step ?? 0,
     },
-    hasWorkspace: (workspaces?.length || 0) > 0,
-    workspaceId: workspaces?.[0]?.workspace_id || null,
-    workspaceName: (workspaces?.[0]?.workspaces as unknown as { name: string } | null)?.name ?? null,
+    hasWorkspace: workspaces.length > 0,
+    workspaceId: workspaces[0]?.workspace_id ?? null,
+    workspaceName: (workspaces[0]?.workspaces as { name?: string } | null)?.name ?? null,
   };
 }
 
@@ -80,37 +83,12 @@ export default async function OnboardingPage() {
   const state = await getOnboardingState();
   
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-canvas relative overflow-hidden">
-      {/* Ambient Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 grain-overlay" />
-        <div 
-          className="absolute -top-[25%] -left-[15%] w-[65vw] h-[65vw] rounded-full blur-[160px] opacity-50 animate-pulse"
-          style={{ 
-            background: 'radial-gradient(circle, oklch(0.85 0.05 90) 0%, transparent 70%)',
-            animationDuration: '8s',
-          }}
-        />
-        <div 
-          className="absolute top-[15%] -right-[20%] w-[55vw] h-[55vw] rounded-full blur-[140px] opacity-35 animate-pulse"
-          style={{ 
-            background: 'radial-gradient(circle, oklch(0.75 0.07 50) 0%, transparent 70%)',
-            animationDuration: '10s',
-            animationDelay: '2s',
-          }}
-        />
-        <div 
-          className="absolute -bottom-[15%] left-[15%] w-[45vw] h-[45vw] rounded-full blur-[120px] opacity-30 animate-pulse"
-          style={{ 
-            background: 'radial-gradient(circle, oklch(0.70 0.06 160) 0%, transparent 70%)',
-            animationDuration: '12s',
-            animationDelay: '4s',
-          }}
-        />
+    <div className="min-h-screen w-full relative">
+      {/* Match login: spotlight + grain — no colored orbs */}
+      <div className="fixed inset-0 z-0 bg-signal-void pointer-events-none" aria-hidden>
+        <div className="absolute inset-0 grain-overlay" aria-hidden />
       </div>
-      
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-xl">
+      <div className="relative z-10">
         <OnboardingWizard initialState={state} />
       </div>
     </div>

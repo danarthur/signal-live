@@ -1,0 +1,390 @@
+'use server';
+
+import { createClient } from '@/shared/api/supabase/server';
+import { getActiveWorkspaceId } from '@/shared/lib/workspace';
+import type { DealStakeholderRole } from '../lib/stakeholder-roles';
+
+export type { DealStakeholderRole };
+
+export type DealStakeholderDisplay = {
+  id: string;
+  deal_id: string;
+  role: DealStakeholderRole;
+  is_primary: boolean;
+  /** Network node: the organization (e.g. Pure Lavish). */
+  organization_id: string | null;
+  /** Contact node: the person at that org (e.g. Sarah). Null when org-only or person-only (Bride). */
+  entity_id: string | null;
+  /** Primary display: contact name when entity_id set, else org name or person name. */
+  name: string;
+  email: string | null;
+  phone: string | null;
+  /** Contact's name when dual-node (org + contact). For card: "Sarah Jenkins". */
+  contact_name: string | null;
+  /** Contact's email when dual-node. For DocuSign / email. */
+  contact_email: string | null;
+  /** Organization name when organization_id set. For card subtitle: "Pure Lavish". */
+  organization_name: string | null;
+  /** Org logo for card subtitle. */
+  logo_url: string | null;
+  /** Org address for contracts/invoices. */
+  address: { street?: string; city?: string; state?: string; postal_code?: string; country?: string } | null;
+};
+
+/** Person at an org (for Point of Contact step). */
+export type OrgRosterContact = {
+  id: string;
+  entity_id: string;
+  display_name: string;
+  email: string | null;
+};
+
+/**
+ * List stakeholders for a deal (Bill-To, Planner, Venue, Vendor).
+ * Resolves org or entity for name, email, address.
+ * Returns [] if deal_stakeholders table does not exist yet.
+ */
+export async function getDealStakeholders(dealId: string): Promise<DealStakeholderDisplay[]> {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return [];
+
+  try {
+    const supabase = await createClient();
+    const { data: rows, error } = await supabase
+      .from('deal_stakeholders')
+      .select('id, deal_id, role, is_primary, organization_id, entity_id')
+      .eq('deal_id', dealId)
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: true });
+
+    if (error || !rows?.length) return [];
+
+    const orgIds = [...new Set((rows as { organization_id?: string | null }[]).map((r) => r.organization_id).filter(Boolean))] as string[];
+    const entityIds = [...new Set((rows as { entity_id?: string | null }[]).map((r) => r.entity_id).filter(Boolean))] as string[];
+
+    const dualNodePairs = (rows as { organization_id?: string | null; entity_id?: string | null }[])
+      .filter((r) => r.organization_id && r.entity_id)
+      .map((r) => ({ org_id: r.organization_id!, entity_id: r.entity_id! }));
+
+    const [orgsRes, entitiesRes, membersRes] = await Promise.all([
+      orgIds.length > 0
+        ? supabase
+            .from('organizations')
+            .select('id, name, logo_url, support_email, address')
+            .in('id', orgIds)
+            .eq('workspace_id', workspaceId)
+        : { data: [] },
+      entityIds.length > 0
+        ? supabase
+            .from('entities')
+            .select('id, email')
+            .in('id', entityIds)
+        : { data: [] },
+      dualNodePairs.length > 0 && orgIds.length > 0 && entityIds.length > 0
+        ? supabase
+            .from('org_members')
+            .select('org_id, entity_id, first_name, last_name')
+            .in('org_id', orgIds)
+            .in('entity_id', entityIds)
+        : { data: [] },
+    ]);
+
+    const orgMap = new Map(
+      (orgsRes.data ?? []).map((o) => [
+        o.id,
+        {
+          name: (o as { name?: string }).name ?? '',
+          logo_url: (o as { logo_url?: string | null }).logo_url ?? null,
+          email: (o as { support_email?: string | null }).support_email ?? null,
+          address: (o as { address?: Record<string, string> | null }).address ?? null,
+        },
+      ])
+    );
+    const entityMap = new Map(
+      (entitiesRes.data ?? []).map((e) => [e.id, { name: (e as { email?: string }).email ?? '', email: (e as { email?: string }).email ?? null }])
+    );
+
+    const memberRows = (membersRes.data ?? []) as { org_id: string; entity_id: string; first_name: string | null; last_name: string | null }[];
+    const contactDisplayByKey = new Map<string, string>(
+      memberRows.map((m) => {
+        const display = [m.first_name, m.last_name].filter(Boolean).join(' ').trim() || null;
+        return [`${m.org_id}|${m.entity_id}`, display ?? ''];
+      })
+    );
+
+    return rows.map((r) => {
+      const row = r as { id: string; deal_id: string; role: string; is_primary: boolean; organization_id?: string | null; entity_id?: string | null };
+      const org = row.organization_id ? orgMap.get(row.organization_id) : null;
+      const ent = row.entity_id ? entityMap.get(row.entity_id) : null;
+
+      if (row.organization_id && row.entity_id) {
+        // Dual-node: org + contact (e.g. Pure Lavish + person from their crew)
+        const contactDisplay = contactDisplayByKey.get(`${row.organization_id}|${row.entity_id}`);
+        const contactName = contactDisplay || ent?.name || ent?.email || null;
+        const contactEmail = ent?.email ?? null;
+        const orgName = org?.name ?? 'Unknown';
+        return {
+          id: row.id,
+          deal_id: row.deal_id,
+          role: row.role as DealStakeholderRole,
+          is_primary: row.is_primary,
+          organization_id: row.organization_id,
+          entity_id: row.entity_id,
+          name: contactName ?? orgName,
+          email: contactEmail ?? org?.email ?? null,
+          phone: null,
+          contact_name: contactName,
+          contact_email: contactEmail,
+          organization_name: orgName,
+          logo_url: org?.logo_url ?? null,
+          address: org?.address && typeof org.address === 'object' ? org.address : null,
+        };
+      }
+      if (row.organization_id) {
+        return {
+          id: row.id,
+          deal_id: row.deal_id,
+          role: row.role as DealStakeholderRole,
+          is_primary: row.is_primary,
+          organization_id: row.organization_id,
+          entity_id: null,
+          name: org?.name ?? 'Unknown',
+          email: org?.email ?? null,
+          phone: null,
+          contact_name: null,
+          contact_email: null,
+          organization_name: org?.name ?? null,
+          logo_url: org?.logo_url ?? null,
+          address: org?.address && typeof org.address === 'object' ? org.address : null,
+        };
+      }
+      const entOnly = entityMap.get(row.entity_id!);
+      return {
+        id: row.id,
+        deal_id: row.deal_id,
+        role: row.role as DealStakeholderRole,
+        is_primary: row.is_primary,
+        organization_id: null,
+        entity_id: row.entity_id,
+        name: entOnly?.name ?? entOnly?.email ?? 'Unknown',
+        email: entOnly?.email ?? null,
+        phone: null,
+        contact_name: null,
+        contact_email: null,
+        organization_name: null,
+        logo_url: null,
+        address: null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export type AddDealStakeholderResult =
+  | { success: true; id: string }
+  | { success: false; error: string };
+
+/**
+ * Add a stakeholder to a deal (org, entity, or org+contact with role).
+ * Dual-node: pass organizationId + optional entityId (point of contact at that org).
+ */
+export async function addDealStakeholder(
+  dealId: string,
+  role: DealStakeholderRole,
+  options: { organizationId?: string; entityId?: string; isPrimary?: boolean }
+): Promise<AddDealStakeholderResult> {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No workspace.' };
+
+  const { organizationId, entityId, isPrimary = false } = options;
+  const hasOrg = !!organizationId;
+  const hasEntity = !!entityId;
+  if (!hasOrg && !hasEntity) {
+    return { success: false, error: 'Provide organizationId or entityId (or both for dual-node).' };
+  }
+  if (hasEntity && !hasOrg) {
+    // Person-only (e.g. Bride): entity_id set, organization_id null
+  }
+  if (hasOrg && hasEntity) {
+    // Dual-node: org + contact
+  }
+
+  const supabase = await createClient();
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('id')
+    .eq('id', dealId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  if (!deal) return { success: false, error: 'Deal not found.' };
+
+  const { data: inserted, error } = await supabase
+    .from('deal_stakeholders')
+    .insert({
+      deal_id: dealId,
+      organization_id: organizationId ?? null,
+      entity_id: entityId ?? null,
+      role,
+      is_primary: isPrimary,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') return { success: false, error: 'This connection is already on the deal.' };
+    return { success: false, error: error.message };
+  }
+  return { success: true, id: inserted.id };
+}
+
+export type RemoveDealStakeholderResult = { success: true } | { success: false; error: string };
+
+export async function removeDealStakeholder(dealId: string, stakeholderId: string): Promise<RemoveDealStakeholderResult> {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No workspace.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('deal_stakeholders')
+    .delete()
+    .eq('id', stakeholderId)
+    .eq('deal_id', dealId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * List people connected to an organization (for Point of Contact step).
+ * Uses the same source as the Network page: affiliations (organization_id + entity_id).
+ * Also includes org_members for this org so we show everyone—both people stored via
+ * the Networking page (affiliations) and people added via "Add New Contact" (org_members).
+ */
+export async function getOrgRosterForStakeholder(orgId: string): Promise<OrgRosterContact[]> {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return [];
+
+  try {
+    const supabase = await createClient();
+
+    const [affsRes, membersRes] = await Promise.all([
+      supabase
+        .from('affiliations')
+        .select('entity_id')
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .limit(1000),
+      supabase
+        .from('org_members')
+        .select('id, entity_id, first_name, last_name')
+        .eq('org_id', orgId)
+        .limit(1000),
+    ]);
+
+    if (affsRes.error) return [];
+    if (membersRes.error) return [];
+
+    const affEntityIds = new Set((affsRes.data ?? []).map((a) => (a as { entity_id: string }).entity_id).filter(Boolean));
+    const memberRows = (membersRes.data ?? []) as { id: string; entity_id: string | null; first_name: string | null; last_name: string | null }[];
+    for (const m of memberRows) {
+      if (m.entity_id) affEntityIds.add(m.entity_id);
+    }
+    const entityIds = [...affEntityIds];
+
+    if (entityIds.length === 0) return [];
+
+    const entitiesRes = await supabase.from('entities').select('id, email').in('id', entityIds);
+    const entityMap = new Map(
+      (entitiesRes.data ?? []).map((e) => [e.id, { email: (e as { email?: string }).email ?? null }])
+    );
+    const memberByEntity = new Map(
+      memberRows
+        .filter((m) => m.entity_id != null)
+        .map((m) => [
+          m.entity_id!,
+          { id: m.id, first_name: m.first_name, last_name: m.last_name },
+        ])
+    );
+
+    return entityIds.map((entity_id) => {
+      const ent = entityMap.get(entity_id);
+      const member = memberByEntity.get(entity_id);
+      const display =
+        (member && [member.first_name, member.last_name].filter(Boolean).join(' ').trim()) ||
+        ent?.email ||
+        'Unknown';
+      return {
+        id: member?.id ?? entity_id,
+        entity_id,
+        display_name: display,
+        email: ent?.email ?? null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export type CreateContactForOrgResult =
+  | { success: true; entityId: string }
+  | { success: false; error: string };
+
+/**
+ * Add a new person to an organization (Point of Contact flow).
+ * Creates entity + org_member via add_ghost_member RPC so they appear in roster.
+ */
+export async function createContactForOrg(
+  orgId: string,
+  input: { firstName: string; lastName: string; email: string }
+): Promise<CreateContactForOrgResult> {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No workspace.' };
+
+  const { firstName, lastName, email } = input;
+  const trimmed = email.trim();
+  if (!trimmed.includes('@')) return { success: false, error: 'Valid email required.' };
+
+  const supabase = await createClient();
+  const { data: dealCheck } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('id', orgId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  if (!dealCheck) return { success: false, error: 'Organization not found.' };
+
+  const { data: rpcResult, error: rpcErr } = await supabase.rpc('add_ghost_member', {
+    p_org_id: orgId,
+    p_workspace_id: workspaceId,
+    p_first_name: (firstName ?? '').trim(),
+    p_last_name: (lastName ?? '').trim(),
+    p_email: trimmed,
+    p_role: 'member',
+  });
+
+  if (rpcErr) {
+    const msg = rpcErr.message ?? 'Failed to add contact.';
+    if (rpcErr.code === '23505' || msg.toLowerCase().includes('unique')) {
+      return { success: false, error: 'This email is already linked to this organization.' };
+    }
+    return { success: false, error: msg };
+  }
+
+  const result = rpcResult as { ok?: boolean; id?: string; error?: string } | null;
+  if (!result?.ok || !result.id) {
+    return { success: false, error: result?.error ?? 'Failed to add contact.' };
+  }
+
+  // RPC returns org_member id; we need entity_id for deal_stakeholders.contact_node_id
+  const { data: member } = await supabase
+    .from('org_members')
+    .select('entity_id')
+    .eq('id', result.id)
+    .eq('org_id', orgId)
+    .maybeSingle();
+  const entityId = (member as { entity_id?: string | null } | null)?.entity_id ?? null;
+  if (!entityId) return { success: false, error: 'Contact was created but could not be linked.' };
+
+  return { success: true, entityId };
+}

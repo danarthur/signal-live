@@ -8,8 +8,24 @@
 
 import { createClient } from '@/shared/api/supabase/server';
 import { redirect } from 'next/navigation';
-import { loginSchema, signupSchema } from '../model/schema';
+import { cookies } from 'next/headers';
+import {
+  TRUSTED_DEVICE_COOKIE_NAME,
+  TRUSTED_DEVICE_COOKIE_MAX_AGE_SECONDS,
+} from '@/shared/lib/constants';
+import { loginSchema, signupSchema, signupForPasskeySchema } from '../model/schema';
 import type { AuthState, ProfileStatus } from '../model/types';
+
+/** Generates a random password that satisfies schema (8+ chars, 1 upper, 1 number). */
+function randomPassword(): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  let s = '';
+  for (let i = 0; i < 14; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  s += upper[Math.floor(Math.random() * upper.length)];
+  s += '3';
+  return s.split('').sort(() => Math.random() - 0.5).join('');
+}
 
 const initialState: AuthState = {
   status: 'idle',
@@ -99,6 +115,92 @@ export async function signUpAction(
 }
 
 /**
+ * Creates a new user account (programmatic) and redirects to onboarding.
+ * For genesis-style sign-up flow.
+ */
+export async function signUpWithPayload(payload: {
+  email: string;
+  fullName: string;
+  password: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const parsed = signupSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message || 'Invalid input',
+    };
+  }
+
+  const { email, password, fullName } = parsed.data;
+  const supabase = await createClient();
+
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } },
+  });
+
+  if (authError) {
+    if (authError.message.includes('already registered')) {
+      return {
+        ok: false,
+        error: 'An account with this email already exists. Try signing in instead.',
+      };
+    }
+    return { ok: false, error: authError.message };
+  }
+
+  if (!authData.user) {
+    return { ok: false, error: 'Failed to create account' };
+  }
+
+  redirect('/onboarding');
+}
+
+/**
+ * Creates a new user account for passkey-only signup (random password, no redirect).
+ * Client must then call registerPasskey() and redirect to /onboarding.
+ */
+export async function signUpForPasskey(payload: {
+  email: string;
+  fullName: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const parsed = signupForPasskeySchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message || 'Invalid input',
+    };
+  }
+
+  const { email, fullName } = parsed.data;
+  const password = randomPassword();
+  const supabase = await createClient();
+
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } },
+  });
+
+  if (authError) {
+    if (authError.message.includes('already registered')) {
+      return {
+        ok: false,
+        error: 'An account with this email already exists. Try signing in instead.',
+      };
+    }
+    return { ok: false, error: authError.message };
+  }
+
+  if (!authData.user) {
+    return { ok: false, error: 'Failed to create account' };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Authenticates user and redirects based on onboarding status
  * 
  * Flow:
@@ -149,20 +251,43 @@ export async function signInAction(
   // Check profile status for routing
   const profileStatus = await checkProfileStatus(supabase, authData.user.id);
 
-  // Determine redirect destination
+  // Determine redirect destination (support both 'redirect' and 'next' hidden fields)
   let redirectPath: string;
-  
+  const rawNext = (formData.get('redirect') ?? formData.get('next')) as string | null;
+  const sanitizedNext = sanitizeRedirectPath(rawNext);
+
   if (!profileStatus.exists || !profileStatus.onboardingCompleted) {
     redirectPath = '/onboarding';
+  } else if (sanitizedNext) {
+    redirectPath = sanitizedNext;
   } else {
-    // Check if there was a redirect parameter in the original request
-    const intendedPath = formData.get('redirect') as string;
-    redirectPath = intendedPath && intendedPath !== '/login' ? intendedPath : '/lobby';
+    redirectPath = '/lobby';
   }
 
-  // Return success state with redirect info before actual redirect
-  // The redirect happens after the client receives this response
+  const trustDevice = formData.get('trustDevice');
+  if (trustDevice === '1' || trustDevice === 'true') {
+    const cookieStore = await cookies();
+    cookieStore.set(TRUSTED_DEVICE_COOKIE_NAME, 'true', {
+      path: '/',
+      maxAge: TRUSTED_DEVICE_COOKIE_MAX_AGE_SECONDS,
+      sameSite: 'lax',
+    });
+  }
+
   redirect(redirectPath);
+}
+
+/**
+ * Sanitize redirect path: allow only relative paths (no protocol, no //).
+ * Prevents open redirect vulnerabilities.
+ */
+function sanitizeRedirectPath(path: string | null | undefined): string | null {
+  if (!path || typeof path !== 'string') return null;
+  const trimmed = path.trim();
+  if (trimmed === '' || trimmed === '/login' || trimmed === '/signup') return null;
+  if (!trimmed.startsWith('/')) return null;
+  if (trimmed.startsWith('//')) return null;
+  return trimmed;
 }
 
 /**
@@ -191,15 +316,6 @@ async function checkProfileStatus(
     onboardingCompleted: profile.onboarding_completed || false,
     fullName: profile.full_name,
   };
-}
-
-/**
- * Signs out the current user and redirects to login
- */
-export async function signOutAction(): Promise<void> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect('/login');
 }
 
 /**

@@ -22,15 +22,16 @@ const LIFECYCLE_LABELS: Record<EventLifecycleStatus, string> = {
   cancelled: 'Cancelled',
 };
 
+/** Brand: Liquid Ceramic — mercury rim, glass/semantic surfaces, silk for active. */
 const LIFECYCLE_COLORS: Record<EventLifecycleStatus, string> = {
-  lead: 'bg-stone/30 text-ink',
-  tentative: 'bg-amber-500/20 text-amber-800 dark:text-amber-200',
-  confirmed: 'bg-accent-sage/30 text-ink',
-  production: 'bg-silk/40 text-ink',
-  live: 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-200',
-  post: 'bg-ink-muted/20 text-ink-muted',
-  archived: 'bg-ink-muted/15 text-ink-muted',
-  cancelled: 'bg-accent-clay/30 text-ink',
+  lead: 'border border-mercury bg-[var(--color-glass-surface)] text-ceramic',
+  tentative: 'border border-mercury bg-[var(--color-surface-warning)] text-[var(--color-signal-warning)]',
+  confirmed: 'border border-mercury bg-[var(--color-surface-success)] text-[var(--color-signal-success)]',
+  production: 'border border-mercury bg-silk/25 text-neon-blue',
+  live: 'border border-mercury bg-[var(--color-surface-success)] text-[var(--color-signal-success)]',
+  post: 'border border-mercury bg-ink-muted/20 text-ink-muted',
+  archived: 'border border-mercury bg-ink-muted/15 text-ink-muted',
+  cancelled: 'border border-mercury bg-[var(--color-surface-error)] text-[var(--color-signal-error)]',
 };
 
 interface StatusPillProps {

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/shared/api/supabase/client';
 
+/**
+ * Client-only CRM queue with realtime subscription.
+ * The main CRM page (/crm) uses server fetch; use this hook for client-only or realtime views.
+ */
+
 /** Unified event row for CRM (lifecycle = lead/tentative/confirmed). */
 export type Gig = {
   id: string;

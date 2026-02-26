@@ -34,7 +34,7 @@ export default async function EventByGigPage({
         </Link>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-ink-muted uppercase tracking-wider">
-            Event Command Center
+            Event studio
           </p>
           <p className="text-sm text-ink truncate">{event.title ?? eventId}</p>
         </div>

@@ -189,9 +189,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
 
     try {
-      const WEBHOOK_URL = process.env.NEXT_PUBLIC_ARTHUR_VOICE_WEBHOOK || '';
+      const WEBHOOK_URL = process.env.NEXT_PUBLIC_ION_VOICE_WEBHOOK || '';
       if (!WEBHOOK_URL) {
-        addMessage('assistant', 'Voice assistant is not configured. Set NEXT_PUBLIC_ARTHUR_VOICE_WEBHOOK.');
+        addMessage('assistant', 'Voice assistant is not configured. Set NEXT_PUBLIC_ION_VOICE_WEBHOOK.');
         setIsLoading(false);
         return;
       }

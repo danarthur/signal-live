@@ -1,14 +1,53 @@
 'use client';
 
-import { useState, useTransition, useEffect, useCallback } from 'react';
+import { useState, useTransition, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useWorkspace } from '@/shared/ui/providers/WorkspaceProvider';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { Command } from 'cmdk';
-import { Building2, User, MapPin, Plus } from 'lucide-react';
-import { createGig } from '../actions/gig-actions';
+import { Building2, User, MapPin, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { createDeal } from '../actions/deal-actions';
+import { checkDateFeasibility, type FeasibilityStatus, type CheckDateFeasibilityResult } from '../actions/check-date-feasibility';
 import { searchOmni, getVenueSuggestions, type OmniResult, type VenueSuggestion } from '../actions/lookup';
-import { CeramicDatePicker } from './ceramic-date-picker';
+import { CalendarPanel, parseLocalDateString } from './ceramic-date-picker';
 import { cn } from '@/shared/lib/utils';
+import { SIGNAL_PHYSICS, M3_SHARED_AXIS_Y_VARIANTS } from '@/shared/lib/motion-constants';
+import { format } from 'date-fns';
+import { Calendar } from 'lucide-react';
+import type { OptimisticUpdate } from './crm-production-queue';
+
+const EVENT_ARCHETYPES = [
+  { value: 'wedding', label: 'Wedding' },
+  { value: 'corporate_gala', label: 'Corporate Gala' },
+  { value: 'product_launch', label: 'Product Launch' },
+  { value: 'private_dinner', label: 'Private Dinner' },
+] as const;
+
+function FeasibilityBadge({ status, message }: { status: FeasibilityStatus; message: string }) {
+  const styles: Record<FeasibilityStatus, string> = {
+    clear: 'border-[var(--color-signal-success)] bg-[var(--color-surface-success)]/20 text-[var(--color-signal-success)]',
+    caution: 'border-[var(--color-signal-warning)] bg-[var(--color-surface-warning)]/20 text-[var(--color-signal-warning)]',
+    critical: 'border-[var(--color-signal-error)] bg-[var(--color-surface-error)]/20 text-[var(--color-signal-error)]',
+  };
+  const dots: Record<FeasibilityStatus, string> = {
+    clear: 'bg-[var(--color-signal-success)]',
+    caution: 'bg-[var(--color-signal-warning)]',
+    critical: 'bg-[var(--color-signal-error)]',
+  };
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium',
+        styles[status]
+      )}
+      role="status"
+    >
+      <span className={cn('h-2 w-2 shrink-0 rounded-full', dots[status])} aria-hidden />
+      {message}
+    </span>
+  );
+}
 
 function normalizeTime(v: string): string | null {
   if (!v) return null;
@@ -65,10 +104,6 @@ function TimeInput({
   );
 }
 
-type OptimisticUpdate =
-  | { type: 'add'; gig: { id: string; title: string | null; status: string | null; event_date: string | null; location: string | null; client_name: string | null } }
-  | { type: 'revert'; tempId: string };
-
 interface CreateGigModalProps {
   open: boolean;
   onClose: () => void;
@@ -76,15 +111,32 @@ interface CreateGigModalProps {
 }
 
 export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigModalProps) {
+  const router = useRouter();
   const { hasWorkspace } = useWorkspace();
   const [isPending, startTransition] = useTransition();
-  const [title, setTitle] = useState('');
+  const [stage, setStage] = useState<1 | 2>(1);
   const [eventDate, setEventDate] = useState('');
+  const [eventArchetype, setEventArchetype] = useState<string | null>(null);
+  const [feasibility, setFeasibility] = useState<CheckDateFeasibilityResult | null>(null);
+  const [feasibilityLoading, setFeasibilityLoading] = useState(false);
+  const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [eventType, setEventType] = useState<'single' | 'recurring' | 'multi_day'>('single');
   const [endDate, setEndDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [budgetEstimated, setBudgetEstimated] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const budgetEstimatedDisplay = budgetEstimated === undefined ? '' : String(budgetEstimated);
+
+  // Clear error when modal opens or stage changes so stale submit errors don't linger
+  useEffect(() => {
+    if (open) setError(null);
+  }, [open]);
+  const goToStage = (next: 1 | 2) => {
+    setError(null);
+    setStage(next);
+  };
 
   // Client OmniBox state
   const [clientOpen, setClientOpen] = useState(false);
@@ -104,6 +156,24 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
   const [venueResults, setVenueResults] = useState<VenueSuggestion[]>([]);
   const [venueLoading, setVenueLoading] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<{ id: string; name: string; address?: string | null } | null>(null);
+
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
+  const dateBlockRef = useRef<HTMLDivElement>(null);
+  const modalContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) setCalendarExpanded(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (!calendarExpanded) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dateBlockRef.current?.contains(e.target as Node)) return;
+      setCalendarExpanded(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [calendarExpanded]);
 
   const orgId = selectedClient?.type === 'org' ? selectedClient.id : selectedClient?.organizationId ?? null;
 
@@ -153,6 +223,28 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
     return () => clearTimeout(t);
   }, [venueQuery, orgId, runVenueSearch]);
 
+  // Feasibility check when date and archetype are set (read-only; badge on blur / after select)
+  useEffect(() => {
+    if (!eventDate || !eventArchetype || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+      setFeasibility(null);
+      return;
+    }
+    let cancelled = false;
+    setFeasibilityLoading(true);
+    checkDateFeasibility(eventDate)
+      .then((res) => {
+        if (!cancelled) {
+          setFeasibility(res);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFeasibilityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventDate, eventArchetype]);
+
   const clientName = selectedClient?.name ?? '';
   const locationStr = selectedVenue
     ? [selectedVenue.name, selectedVenue.address].filter(Boolean).join(', ')
@@ -166,52 +258,40 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
       setError('No workspace selected. Complete onboarding first.');
       return;
     }
+    if (!eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+      setError('Select a proposed date.');
+      return;
+    }
 
     const tempId = crypto.randomUUID();
     const optimisticGig = {
       id: tempId,
       title: title.trim() || null,
-      status: 'inquiry' as const, // maps to lifecycle_status 'lead' on server
-      event_date: eventDate || null,
+      status: 'inquiry' as const,
+      event_date: eventDate,
       location: locationStr.trim() || null,
       client_name: clientName.trim() || null,
     };
 
-    addOptimisticGig({ type: 'add', gig: optimisticGig });
-
-    const normStart = normalizeTime(startTime);
-    const normEnd = normalizeTime(endTime);
-    const effectiveEndDate = eventType === 'multi_day' && endDate ? endDate : eventDate;
-    const eventStartAt = eventDate && normStart ? `${eventDate}T${normStart}:00` : null;
-    const eventEndAt = effectiveEndDate && normEnd ? `${effectiveEndDate}T${normEnd}:00` : null;
-
     startTransition(async () => {
-      const result = await createGig({
-        title: title.trim(),
-        eventDate: eventStartAt ?? (eventDate || null),
-        status: 'inquiry', // server maps to lifecycle_status 'lead'
-        location: locationStr.trim() || null,
-        clientName: clientName.trim() || null,
-        venueId: (selectedVenue?.id && selectedVenue.id.length > 0) ? selectedVenue.id : null,
-        organizationId: selectedClient?.type === 'org' ? selectedClient.id : selectedClient?.organizationId ?? null,
-        mainContactId: selectedClient?.type === 'contact' ? selectedClient.id : null,
-        eventStartAt: eventStartAt ?? null,
-        eventEndAt: eventEndAt ?? null,
-        isRecurring: eventType === 'recurring',
-        occurrenceType: eventType,
+      addOptimisticGig({ type: 'add', gig: optimisticGig });
+      const result = await createDeal({
+        proposedDate: eventDate,
+        eventArchetype: eventArchetype ?? undefined,
+        title: title.trim() || undefined,
+        organizationId: selectedClient?.type === 'org' ? selectedClient.id : selectedClient?.organizationId ?? undefined,
+        mainContactId: selectedClient?.type === 'contact' ? selectedClient.id : undefined,
+        status: 'inquiry',
+        budgetEstimated: budgetEstimated ?? undefined,
+        notes: notesTrimmed || undefined,
+        venueId: (selectedVenue?.id && selectedVenue.id.length > 0) ? selectedVenue.id : undefined,
       });
 
       if (result.success) {
+        addOptimisticGig({ type: 'replaceId', tempId, realId: result.dealId });
+        router.refresh();
         onClose();
-        setTitle('');
-        setEventDate('');
-        setEndDate('');
-        setStartTime('');
-        setEndTime('');
-        setSelectedClient(null);
-        setSelectedVenue(null);
-        setClientQuery('');
-        setVenueQuery('');
+        resetForm();
       } else {
         addOptimisticGig({ type: 'revert', tempId });
         setError(result.error);
@@ -219,36 +299,186 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
     });
   };
 
-  if (!open) return null;
+  const notesTrimmed = notes?.trim() || '';
+
+  function resetForm() {
+    setStage(1);
+    setCalendarExpanded(false);
+    setEventDate('');
+    setEventArchetype(null);
+    setFeasibility(null);
+    setTitle('');
+    setEndDate('');
+    setStartTime('');
+    setEndTime('');
+    setSelectedClient(null);
+    setSelectedVenue(null);
+    setClientQuery('');
+    setVenueQuery('');
+    setNotes('');
+    setBudgetEstimated(undefined);
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto overflow-x-hidden">
-      <div
-        className="absolute inset-0 bg-obsidian/40 backdrop-blur-sm"
-        onClick={onClose}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
-        role="button"
-        tabIndex={0}
-        aria-label="Close modal"
-      />
-      <div
-        className="relative z-10 my-auto w-full max-w-2xl min-w-0 max-h-[min(90vh,40rem)]"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto overflow-x-hidden">
+          <motion.div
+            className="absolute inset-0 bg-obsidian/50 backdrop-blur-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={SIGNAL_PHYSICS}
+            onMouseDown={onClose}
+            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            role="button"
+            tabIndex={0}
+            aria-label="Close modal"
+          />
+          <motion.div
+            ref={modalContentRef}
+            className="relative z-10 my-auto w-full max-w-2xl min-w-0 max-h-[min(90vh,40rem)]"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={SIGNAL_PHYSICS}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
       <LiquidPanel className="flex flex-col overflow-hidden p-0 h-full">
         <div className="p-6 pb-4 shrink-0 min-w-0 overflow-hidden">
-          <h2 className="text-lg font-medium text-ink mb-1 truncate">New Production</h2>
+          <h2 className="text-lg font-medium text-ink mb-1 truncate">
+            {stage === 1 ? 'Set the date' : 'New production'}
+          </h2>
           <p className="text-sm text-ink-muted break-words">
-            Creating a gig will add it to the calendar, Production Queue, and Active Productions.
+            {stage === 1
+              ? 'Check availability for your date and event type. We’ll show you demand at a glance.'
+              : 'Add client and details. This creates a deal in your pipeline (no event yet).'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-6 py-2 min-h-0 min-w-0">
-          {/* Bento Grid Layout */}
           <div className="grid grid-cols-1 gap-4 auto-rows-auto pb-4 min-w-0">
-            {/* Title + Client */}
+            {/* Stage 1: Date + Archetype + Feasibility badge */}
+            {stage === 1 && (
+              <motion.div
+                key="stage1"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={SIGNAL_PHYSICS}
+                className="space-y-4 min-w-0"
+              >
+                {/* Shared glass field style for date + archetype (design system) */}
+                <div ref={dateBlockRef} className="space-y-4 min-w-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="create-gig-proposed-date"
+                        className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5"
+                      >
+                        Proposed date
+                      </label>
+                      <button
+                        id="create-gig-proposed-date"
+                        type="button"
+                        onClick={() => setCalendarExpanded((o) => !o)}
+                        aria-expanded={calendarExpanded}
+                        aria-haspopup="dialog"
+                        className={cn(
+                          'flex w-full min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors duration-200',
+                          'border-[var(--glass-border)] bg-[var(--glass-bg)] text-left',
+                          'hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-inset'
+                        )}
+                      >
+                        <Calendar size={16} className="shrink-0 text-ink-muted" strokeWidth={1.5} aria-hidden />
+                        <span className={cn('flex-1 min-w-0 truncate', eventDate ? 'text-ink' : 'text-ink-muted/70')}>
+                          {eventDate ? format(parseLocalDateString(eventDate), 'PPP') : 'Select date'}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={cn('shrink-0 text-ink-muted transition-transform duration-200', calendarExpanded && 'rotate-180')}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="create-gig-event-archetype"
+                        className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5"
+                      >
+                        Event archetype
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="create-gig-event-archetype"
+                          value={eventArchetype ?? ''}
+                          onChange={(e) => setEventArchetype(e.target.value || null)}
+                          className={cn(
+                            'w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] pl-3 pr-9 py-2.5 text-sm appearance-none cursor-pointer',
+                            'text-ink placeholder:text-ink-muted/70',
+                            'hover:bg-[var(--glass-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-inset'
+                          )}
+                        >
+                          <option value="">Select type</option>
+                          {EVENT_ARCHETYPES.map((a) => (
+                            <option key={a.value} value={a.value}>{a.label}</option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={16}
+                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                          aria-hidden
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <AnimatePresence>
+                    {calendarExpanded && (
+                      <motion.div
+                        key="calendar-row"
+                        initial={M3_SHARED_AXIS_Y_VARIANTS.hidden}
+                        animate={M3_SHARED_AXIS_Y_VARIANTS.visible}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={SIGNAL_PHYSICS}
+                        className="w-full min-w-0"
+                      >
+                        <CalendarPanel
+                          value={eventDate}
+                          onChange={(d) => {
+                            setEventDate(d);
+                            setCalendarExpanded(false);
+                          }}
+                          onClose={() => setCalendarExpanded(false)}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                {/* Feasibility badge: appears when date + archetype set */}
+                {eventDate && eventArchetype && (
+                  <div className="flex items-center gap-2 min-w-0">
+                    {feasibilityLoading ? (
+                      <span className="text-sm text-ink-muted">Checking availability…</span>
+                    ) : feasibility ? (
+                      <FeasibilityBadge status={feasibility.status} message={feasibility.message} />
+                    ) : null}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Stage 2: Title, Client, Venue, Times, Budget, Notes */}
+            {stage === 2 && (
+              <motion.div
+                key="stage2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={SIGNAL_PHYSICS}
+                className="space-y-4 min-w-0"
+              >
             <div className="space-y-4 min-w-0">
               <div>
                 <label htmlFor="create-gig-title" className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
@@ -261,7 +491,6 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Summer Gala 2026"
                   className="w-full min-w-0 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                  required
                 />
               </div>
 
@@ -327,93 +556,6 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
               </div>
             </div>
 
-            {/* Date & Event type - side by side */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
-              <div>
-                <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
-                  Date
-                </label>
-                <CeramicDatePicker
-                  value={eventDate}
-                  onChange={setEventDate}
-                  placeholder="Select date"
-                />
-              </div>
-              <div>
-                <span className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-2">
-                  Event type
-                </span>
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="eventType"
-                      checked={eventType === 'single'}
-                      onChange={() => setEventType('single')}
-                      className="h-4 w-4 border-[var(--glass-border)] text-walnut focus:ring-[var(--ring)]"
-                    />
-                    <span className="text-sm text-ink">Single event</span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="eventType"
-                      checked={eventType === 'recurring'}
-                      onChange={() => setEventType('recurring')}
-                      className="h-4 w-4 border-[var(--glass-border)] text-walnut focus:ring-[var(--ring)]"
-                    />
-                    <span className="text-sm text-ink">Recurring</span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="eventType"
-                      checked={eventType === 'multi_day'}
-                      onChange={() => setEventType('multi_day')}
-                      className="h-4 w-4 border-[var(--glass-border)] text-walnut focus:ring-[var(--ring)]"
-                    />
-                    <span className="text-sm text-ink">Multi-day</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {eventType === 'multi_day' && (
-              <div>
-                <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
-                  End date
-                </label>
-                <CeramicDatePicker
-                  value={endDate}
-                  onChange={setEndDate}
-                  placeholder="Select end date"
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="create-gig-start" className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
-                    Start time
-                  </label>
-                  <TimeInput
-                    id="create-gig-start"
-                    value={startTime}
-                    onChange={setStartTime}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="create-gig-end" className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
-                    End time
-                  </label>
-                  <TimeInput
-                    id="create-gig-end"
-                    value={endTime}
-                    onChange={setEndTime}
-                  />
-                </div>
-              </div>
-
             {/* Venue Selector - plain input + dropdown only when results exist */}
             <div className="min-w-0 relative">
               <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
@@ -477,32 +619,113 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
                 </div>
               )}
             </div>
+
+            {/* Optional: Rough Budget + Notes */}
+            <div>
+              <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
+                Rough budget (optional)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={budgetEstimatedDisplay}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setBudgetEstimated(v === '' ? undefined : Number(v));
+                }}
+                placeholder="e.g. 25000"
+                className="w-full min-w-0 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">
+                Notes (optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Internal notes…"
+                rows={2}
+                className="w-full min-w-0 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] resize-none"
+              />
+            </div>
+            </motion.div>
+            )}
           </div>
 
           </div>
 
           <div className="flex flex-col gap-2 p-6 pt-4 border-t border-[var(--glass-border)] shrink-0 bg-[var(--glass-bg)]/50 min-w-0 overflow-hidden">
-            {error && <p className="text-sm text-rose-500 break-words">{error}</p>}
+            {!hasWorkspace && (
+              <p className="text-sm text-[var(--color-signal-error)] break-words">
+                No workspace selected. Complete onboarding first.
+              </p>
+            )}
+            {hasWorkspace && error && (
+              <p className="text-sm text-[var(--color-signal-error)] break-words">{error}</p>
+            )}
             <div className="flex gap-2 min-w-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-[var(--glass-border)] py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-[var(--glass-bg-hover)]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="flex-1 rounded-xl bg-walnut py-2.5 text-sm font-medium text-canvas transition-colors hover:opacity-90 disabled:opacity-60"
-            >
-              {isPending ? 'Creating…' : 'Create Production'}
-            </button>
+            {stage === 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 rounded-xl border border-[var(--glass-border)] py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-[var(--glass-bg-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+                >
+                  Cancel
+                </button>
+                {feasibility?.status === 'critical' ? (
+                  <button
+                    type="button"
+                    className="flex-1 rounded-xl border border-[var(--color-signal-warning)] py-2.5 text-sm font-medium text-[var(--color-signal-warning)] transition-colors hover:bg-[var(--color-surface-warning)]/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    Join Waitlist
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!hasWorkspace || !eventDate || !eventArchetype || feasibilityLoading}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      goToStage(2);
+                    }}
+                    className="flex-1 m3-btn-tonal min-h-[44px] rounded-xl transition-[transform,filter] hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] flex items-center justify-center gap-2"
+                  >
+                    Next <ChevronRight size={16} />
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goToStage(1);
+                  }}
+                  className="flex-1 rounded-xl border border-[var(--glass-border)] py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-[var(--glass-bg-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={!hasWorkspace || isPending}
+                  className="flex-1 m3-btn-tonal min-h-[44px] rounded-xl transition-[transform,filter] hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] flex items-center justify-center gap-2"
+                >
+                  {isPending ? 'Creating…' : 'Create deal'}
+                </button>
+              </>
+            )}
             </div>
           </div>
         </form>
       </LiquidPanel>
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

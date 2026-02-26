@@ -9,14 +9,15 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, Calendar, CalendarDays, MessageSquare, Wallet, Settings, Sun, Moon, SunMoon, LogOut, User, FolderKanban } from 'lucide-react';
+import { LayoutGrid, Calendar, CalendarDays, MessageSquare, Wallet, Settings, Sun, Moon, SunMoon, LogOut, User, FolderKanban, Users, BookMarked } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from '@/shared/ui/providers/SessionContext';
 import { useSystemHeart } from '@/shared/ui/providers/SystemHeartContext';
 import { LivingLogo } from '@/shared/ui/branding/living-logo';
 import { cn } from '@/shared/lib/utils';
-import { signOutAction } from '@/features/auth/smart-login';
+import { signOutAction } from '@/shared/api/auth/sign-out';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
 
 interface SidebarWithUserProps {
   user: {
@@ -36,7 +37,6 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
 
   const springConfig = { type: 'spring', stiffness: 300, damping: 30 } as const;
 
@@ -49,30 +49,6 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
     const t = setTimeout(() => setSystemStatus('idle'), 400);
     return () => clearTimeout(t);
   }, [pathname, setSystemStatus]);
-
-  // Close account menu when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
-        setIsAccountOpen(false);
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Close on escape
-  useEffect(() => {
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsAccountOpen(false);
-      }
-    }
-    
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
 
   const handleNavClick = (id: string) => {
     if (id === 'brain') setViewState('chat');
@@ -89,9 +65,11 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
     { id: 'overview', label: 'Overview', icon: LayoutGrid, href: '/lobby' },
     { id: 'brain', label: 'Brain', icon: MessageSquare, href: '/brain' },
     { id: 'calendar', label: 'Calendar', icon: CalendarDays, href: '/calendar' },
+    { id: 'network', label: 'Network', icon: Users, href: '/network' },
     { id: 'production', label: 'Production', icon: FolderKanban, href: '/crm' },
+    { id: 'catalog', label: 'Catalog', icon: BookMarked, href: '/catalog' },
     { id: 'finance', label: 'Finance', icon: Wallet, href: '/finance' },
-    { id: 'settings', label: 'Kit', icon: Settings, href: '/settings' },
+    { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
   ];
 
   const cycleTheme = () => {
@@ -107,45 +85,107 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
   return (
     <motion.aside
       initial={false}
-      className={cn(
-        "liquid-panel h-full w-[88px] relative z-50 flex flex-col transition-colors duration-500 !p-0",
-        "!bg-[var(--sidebar-bg)] backdrop-blur-xl backdrop-saturate-150"
-      )}
+      className="sidebar-panel h-full w-[88px] relative z-50 flex flex-col !p-0 rounded-r-2xl"
     >
       <div className="py-4 flex flex-col h-full">
         {/* User Account Section - Top */}
-        <div ref={accountRef} className="px-3 mb-6 relative">
-          <motion.button
-            onClick={() => setIsAccountOpen(!isAccountOpen)}
-            onMouseEnter={() => setHoveredId('account')}
-            onMouseLeave={() => setHoveredId(null)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            transition={springConfig}
-            className={cn(
-              "w-full h-14 flex items-center justify-center rounded-xl transition-all duration-200",
-              isAccountOpen 
-                ? "liquid-panel active-glass !rounded-xl" 
-                : "hover:bg-[var(--glass-bg-hover)]"
-            )}
-          >
-            {/* Avatar */}
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-ink/10 flex items-center justify-center ring-2 ring-[var(--glass-border)]">
-              {user?.avatarUrl ? (
-                <img 
-                  src={user.avatarUrl} 
-                  alt={user.fullName || 'User'} 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-sm font-medium text-ink">{initials}</span>
-              )}
-            </div>
-          </motion.button>
+        <div className="px-3 mb-6 relative">
+          <Popover open={isAccountOpen} onOpenChange={setIsAccountOpen}>
+            <PopoverTrigger asChild>
+              <motion.button
+                onMouseEnter={() => setHoveredId('account')}
+                onMouseLeave={() => setHoveredId(null)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={springConfig}
+                className={cn(
+                  "w-full h-14 flex items-center justify-center rounded-xl transition-all duration-200",
+                  isAccountOpen
+                    ? "liquid-panel active-glass !rounded-xl"
+                    : "hover:bg-[var(--glass-bg-hover)]"
+                )}
+              >
+                <div className="avatar-primary w-10 h-10 bg-ink/10 flex items-center justify-center shrink-0">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.fullName || "User"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-medium text-ink">{initials}</span>
+                  )}
+                </div>
+              </motion.button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="right"
+              align="start"
+              sideOffset={12}
+              className="w-64 liquid-panel p-0 border-[var(--glass-border)]"
+            >
+              {/* User Info */}
+              <div className="px-3 py-3 border-b border-[var(--glass-border)]">
+                <div className="flex items-center gap-3">
+                  <div className="avatar-primary w-10 h-10 bg-ink/10 flex items-center justify-center shrink-0">
+                    {user?.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.fullName || "User"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-5 h-5 text-ink-muted" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink truncate">
+                      {user?.fullName || "User"}
+                    </p>
+                    <p className="text-xs text-ink-muted truncate">{user?.email}</p>
+                  </div>
+                </div>
+
+                {/* Workspace Indicator */}
+                {workspaceName && (
+                  <div className="mt-3 px-2 py-1.5 rounded-lg bg-ink/[0.03] border border-[var(--glass-border)]">
+                    <p className="text-[10px] text-ink-muted/70 uppercase tracking-wider mb-0.5">
+                      Workspace
+                    </p>
+                    <p className="text-xs font-medium text-ink truncate">{workspaceName}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Menu Items */}
+              <div className="py-2">
+                <button
+                  onClick={() => {
+                    setIsAccountOpen(false);
+                    router.push("/settings");
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-muted hover:text-ink hover:bg-ink/5 transition-colors text-left"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="text-sm">Settings</span>
+                </button>
+
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-muted hover:text-red-600 hover:bg-red-500/5 transition-colors text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm">Sign Out</span>
+                  </button>
+                </form>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Account Tooltip */}
           <AnimatePresence>
-            {hoveredId === 'account' && !isAccountOpen && (
+            {hoveredId === "account" && !isAccountOpen && (
               <motion.div
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -154,84 +194,6 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                 className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
               >
                 Account
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Account Dropdown */}
-          <AnimatePresence>
-            {isAccountOpen && (
-              <motion.div
-                initial={{ opacity: 0, x: -8, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -8, scale: 0.95 }}
-                transition={springConfig}
-                className="absolute left-full top-0 ml-3 w-64 liquid-panel p-2 z-[60]"
-              >
-                {/* User Info */}
-                <div className="px-3 py-3 border-b border-[var(--glass-border)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-ink/10 flex items-center justify-center shrink-0">
-                      {user?.avatarUrl ? (
-                        <img 
-                          src={user.avatarUrl} 
-                          alt={user.fullName || 'User'} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-5 h-5 text-ink-muted" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink truncate">
-                        {user?.fullName || 'User'}
-                      </p>
-                      <p className="text-xs text-ink-muted truncate">
-                        {user?.email}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Workspace Indicator */}
-                  {workspaceName && (
-                    <div className="mt-3 px-2 py-1.5 rounded-lg bg-ink/[0.03] border border-[var(--glass-border)]">
-                      <p className="text-[10px] text-ink-muted/70 uppercase tracking-wider mb-0.5">
-                        Workspace
-                      </p>
-                      <p className="text-xs font-medium text-ink truncate">
-                        {workspaceName}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Menu Items */}
-                <div className="py-2">
-                  <button
-                    onClick={() => {
-                      setIsAccountOpen(false);
-                      router.push('/settings');
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                      text-ink-muted hover:text-ink hover:bg-ink/5
-                      transition-colors text-left"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span className="text-sm">Kit</span>
-                  </button>
-                  
-                  <form action={signOutAction}>
-                    <button
-                      type="submit"
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                        text-ink-muted hover:text-red-600 hover:bg-red-500/5
-                        transition-colors text-left"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="text-sm">Sign Out</span>
-                    </button>
-                  </form>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -365,7 +327,7 @@ export function SidebarWithUser({ user, workspaceName }: SidebarWithUserProps) {
                   transition={springConfig}
                   className="absolute left-full ml-3 px-3 py-1.5 bg-ink/90 text-[var(--background)] text-xs font-medium rounded-full pointer-events-none whitespace-nowrap liquid-levitation-strong z-[60]"
                 >
-                  Kit
+                  Settings
                 </motion.div>
               )}
             </AnimatePresence>

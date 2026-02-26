@@ -66,7 +66,7 @@ export function MonthGrid({ events, viewDate, onEventClick, onDayClick, locale }
         {weekdays.map((label) => (
           <div
             key={label}
-            className="px-2 py-3 text-center text-sm font-semibold text-ink-muted tracking-tight dark:font-medium dark:text-ink"
+            className="px-2 py-3 text-center text-sm font-semibold text-ink/80 tracking-tight"
           >
             {label}
           </div>
@@ -92,7 +92,7 @@ export function MonthGrid({ events, viewDate, onEventClick, onDayClick, locale }
                   type="button"
                   onClick={() => onDayClick(key)}
                   className={`text-sm md:text-base font-semibold tabular-nums shrink-0 hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--ring)] rounded ${
-                    inMonth ? 'text-ink' : 'text-ink-muted'
+                    inMonth ? 'text-ink' : 'text-ink/70'
                   }`}
                 >
                   {format(day, 'd')}
@@ -100,7 +100,7 @@ export function MonthGrid({ events, viewDate, onEventClick, onDayClick, locale }
               ) : (
                 <span
                   className={`text-sm md:text-base font-semibold tabular-nums shrink-0 ${
-                    inMonth ? 'text-ink' : 'text-ink-muted'
+                    inMonth ? 'text-ink' : 'text-ink/70'
                   }`}
                 >
                   {format(day, 'd')}

@@ -1,124 +1,136 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useSession } from '@/shared/ui/providers/SessionContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
-import { ActiveProductionWidget } from '@/widgets/active-production';
-
+import {
+  M3_FADE_THROUGH_ENTER,
+  M3_FADE_THROUGH_EXIT,
+  M3_STAGGER_CHILDREN,
+  M3_STAGGER_DELAY,
+} from '@/shared/lib/motion-constants';
+import { usePulseMetrics } from '@/widgets/global-pulse';
+import { GlobalPulseStrip } from '@/widgets/global-pulse';
+import { LobbyBentoGrid } from './LobbyBentoGrid';
 import { ChatInterface } from '@/app/(dashboard)/(features)/brain/components/ChatInterface';
-import { ArthurInput } from '@/app/(dashboard)/(features)/brain/components/ArthurInput';
-import { DailyBriefingClient } from '@/app/(dashboard)/(features)/inbox/components/DailyBriefingClient';
-import { AIStatus } from '@/app/(dashboard)/(features)/brain/components/AIStatus';
-import { FinancialUpdates } from '@/app/(dashboard)/(features)/finance/components/FinancialUpdates';
 
 /**
- * Main Dashboard (Lobby) — Overview, finance, inbox, and AI input.
+ * Signal Hub (Lobby) — Living Topology Bento Grid.
+ * Growth: Pipeline + Action Stream + Inbox + Cash Flow.
+ * Execution: Live Gig + Run-of-Show + Sentiment Pulse.
+ * Levitation: Live Gig floats (scale, shadow) when 15–60 min to showtime.
+ * Critical: Focus Layout (Hero 60%, secondary column).
+ * Bokeh: Background blurs when a card is focused.
  */
 export default function LobbyPage() {
   const { viewState, setViewState } = useSession();
-  const [input, setInput] = useState('');
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value);
-  const handleDashboardSubmit = async () => {
-    if (!input.trim()) return;
-    setViewState('chat');
-  };
-
+  const { isActiveMode } = usePulseMetrics();
   const showOverview = viewState !== 'chat';
 
   return (
-    <div className="flex-1 min-h-full w-full relative p-4 md:p-6 lg:p-8 font-sans overflow-auto">
+    <div className="flex-1 min-h-0 w-full flex flex-col font-sans relative">
+      {/* Ambient state tint — cool (Growth) vs warm (Execution); single gradient from top, no orbs */}
+      {showOverview && (
+        <div className="absolute inset-0 z-0" aria-hidden>
+          <div className={isActiveMode ? 'lobby-ambient-execution' : 'lobby-ambient-growth'} />
+        </div>
+      )}
       <AnimatePresence mode="wait">
         {showOverview && (
-          <motion.div
-            key="dashboard-view"
-            className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-full"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-          >
-            <div className="md:col-span-3 flex flex-col gap-6 min-h-0">
-              <LiquidPanel hoverEffect className="flex-1 flex flex-col justify-between min-h-0">
-                <div className="space-y-1">
-                  <h2 className="text-xs font-medium text-ink-muted uppercase tracking-widest">Finance</h2>
-                  <div className="text-3xl font-light text-ink tracking-tight">
-                    $24,500<span className="text-ink-muted text-lg">.00</span>
-              </div>
-            </div>
-                <div className="mt-4">
-                   <FinancialUpdates />
+          <>
+            {/* Pulse bar overlays scroll; scroll content fades at top so content above bar disappears, glass reads */}
+            <div className="relative flex-1 min-h-0 flex flex-col">
+              {/* Pulse strip — overlay so not masked; no bg so glass blurs content in fade zone */}
+              <motion.div
+                key="pulse-strip"
+                className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 md:px-6 md:pt-6 lg:px-8 lg:pt-8 pb-2 pointer-events-none"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, transition: M3_FADE_THROUGH_EXIT }}
+                transition={M3_FADE_THROUGH_ENTER}
+              >
+                <div className="pointer-events-auto">
+                  <GlobalPulseStrip />
                 </div>
-              </LiquidPanel>
+              </motion.div>
 
-              <ActiveProductionWidget />
+              {/* Scroll area with top fade: content above the bar fades out so only glass effect shows */}
+              <motion.div
+                key="hub-view"
+                className="relative z-10 flex-1 min-h-0 overflow-auto lobby-scroll-fade-top px-4 md:px-6 lg:px-8 pb-4 md:pb-6 lg:pb-8"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={{
+                  visible: {
+                    transition: {
+                      staggerChildren: M3_STAGGER_CHILDREN,
+                      delayChildren: M3_STAGGER_DELAY,
+                    },
+                  },
+                  hidden: {},
+                  exit: {
+                    opacity: 0,
+                    scale: 0.98,
+                    transition: M3_FADE_THROUGH_EXIT,
+                  },
+                }}
+              >
+                <motion.div
+                  className="flex flex-col gap-4 pt-[7.5rem]"
+                  variants={{ visible: { transition: { staggerChildren: 0.05 } }, hidden: {} }}
+                >
+                  <LobbyBentoGrid />
+                </motion.div>
+              </motion.div>
             </div>
-
-            <div className="md:col-span-6 flex flex-col items-center justify-center relative z-10">
-              <div className="text-center mb-12 space-y-4">
-                <h1 className="text-6xl md:text-7xl font-light tracking-tight text-ink">
-                  Good Morning.
-                </h1>
-                <p className="text-xl text-ink-muted font-light">
-                  System is <span className="text-ink font-medium">Online</span>.
-                </p>
-              </div>
-
-              <div className="w-full max-w-xl">
-                <ArthurInput
-                  input={input}
-                  setInput={setInput}
-                  handleInputChange={handleInputChange}
-                  isLoading={false}
-                  onInteraction={handleDashboardSubmit}
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-3 flex flex-col gap-6 min-h-0">
-              <div className="space-y-4">
-                <span className="text-xs font-medium text-ink-muted uppercase tracking-widest">Status</span>
-                <AIStatus />
-              </div>
-
-              <LiquidPanel className="flex-1 flex flex-col min-h-0">
-                <div className="mb-4 pb-4 border-b border-[var(--glass-border)] flex justify-between items-end">
-                  <h2 className="text-xs font-medium text-ink-muted uppercase tracking-widest">Inbox</h2>
-                  <span className="text-xs text-ink liquid-panel !rounded-full !px-2 !py-0.5 !p-0">0</span>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <DailyBriefingClient items={[]} />
-              </div>
-              </LiquidPanel>
-            </div>
-          </motion.div>
+          </>
         )}
 
         {viewState === 'chat' && (
           <motion.div
             key="chat-view"
-            className="h-full w-full flex flex-col"
-            initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+            className="relative z-10 flex-1 min-h-0 w-full flex flex-col"
+            initial={{ opacity: 0, scale: 0.98, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{
+              opacity: 0,
+              scale: 0.99,
+              y: -4,
+              transition: M3_FADE_THROUGH_EXIT,
+            }}
+            transition={M3_FADE_THROUGH_ENTER}
           >
             <LiquidPanel className="flex-1 overflow-hidden flex flex-col !p-0">
               <div className="flex-1">
                 <ChatInterface />
-            </div>
+              </div>
             </LiquidPanel>
 
-            <button
+            <motion.button
+              type="button"
               onClick={() => setViewState('overview')}
-              className="mt-4 mx-auto flex items-center gap-2 text-xs font-medium text-ink-muted hover:text-ink transition-colors uppercase tracking-widest"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={M3_FADE_THROUGH_ENTER}
+              className="mt-4 mx-auto flex items-center gap-2 m3-btn-tonal text-xs uppercase tracking-widest"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 12h-15m0 0l6.75 6.75M4.5 12l6.75-6.75" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M19.5 12h-15m0 0l6.75 6.75M4.5 12l6.75-6.75"
+                />
               </svg>
               Return to Dashboard
-            </button>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -5,20 +5,58 @@
 
 'use server';
 
+import { unstable_noStore } from 'next/cache';
 import { createClient } from '@/shared/api/supabase/server';
 import { getSystemClient } from '@/shared/api/supabase/system';
+import { sendProposalLinkEmail } from '@/shared/api/email/send';
 import type { Package } from '@/types/supabase';
+import type { ProposalWithItems } from '../model/types';
+
+/** Minimal shape for package definition.blocks when expanding to line items. */
+type DefinitionBlock =
+  | { type: 'line_item'; catalogId: string; quantity: number }
+  | { type: 'line_item_group'; items: string[] };
 
 // =============================================================================
 // Types for action input/output
 // =============================================================================
 
+export type ProposalLineItemCategory =
+  | 'package'
+  | 'service'
+  | 'rental'
+  | 'talent'
+  | 'retail_sale'
+  | 'fee';
+
+export type UnitType = 'flat' | 'hour' | 'day';
+
 export interface ProposalLineItemInput {
+  /** When adding from catalog: pass for analytics only. Row data is copied; no live link (snapshot on insert). */
   packageId?: string | null;
+  /** Explicit origin for analytics when packageId is not used (e.g. after deep copy). */
+  originPackageId?: string | null;
+  packageInstanceId?: string | null;
+  displayGroupName?: string | null;
+  isClientVisible?: boolean | null;
+  /** Billing basis: flat (qty × price), hour (qty × hrs × price/hr), day (qty × days × price/day). */
+  unitType?: UnitType | null;
+  /** Hours or days per unit when unitType is hour/day; default 1. */
+  unitMultiplier?: number | null;
+  /** Category snapshot for cost editability rules in Financial Inspector. */
+  category?: ProposalLineItemCategory | null;
   name: string;
   description?: string | null;
   quantity: number;
   unitPrice: number;
+  /** Negotiated price for this client; falls back to unitPrice when null. */
+  overridePrice?: number | null;
+  /** Actual cost for this event (e.g. talent agreed to lower payout); used for margin. */
+  actualCost?: number | null;
+  /** True for the bundle header row; children of that package have unit_price 0. */
+  isPackageHeader?: boolean | null;
+  /** Catalog price when added as package child; used when Unpack restores a la carte price. */
+  originalBasePrice?: number | null;
 }
 
 export interface GetPackagesResult {
@@ -44,6 +82,333 @@ export interface SignProposalResult {
 }
 
 // =============================================================================
+// getProposalForDeal(dealId): Latest proposal for this deal (Liquid phase; no event required)
+// =============================================================================
+
+export async function getProposalForDeal(dealId: string): Promise<ProposalWithItems | null> {
+  unstable_noStore();
+  const supabase = await createClient();
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (!proposals?.length) return null;
+  const proposal = proposals[0];
+  const { data: items } = await supabase
+    .from('proposal_items')
+    .select('*')
+    .eq('proposal_id', proposal.id)
+    .order('sort_order', { ascending: true });
+  return { ...proposal, items: items ?? [] };
+}
+
+/** Return the public URL for the deal's sent proposal, or null. Use for "View shared link" so the token is always correct. */
+export async function getProposalPublicUrl(dealId: string): Promise<string | null> {
+  unstable_noStore();
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from('proposals')
+    .select('public_token')
+    .eq('deal_id', dealId)
+    .in('status', ['sent', 'viewed', 'accepted'])
+    .not('public_token', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const token = (row as { public_token?: string } | null)?.public_token;
+  if (!token?.trim()) return null;
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  return base ? `${base}/p/${token}` : `/p/${token}`;
+}
+
+/** Resolve event -> deal, then return latest proposal for that deal. Use for event-scoped deal room. */
+export async function getProposalForEvent(eventId: string): Promise<ProposalWithItems | null> {
+  const supabase = await createClient();
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('id')
+    .eq('event_id', eventId)
+    .maybeSingle();
+  if (!deal?.id) return null;
+  return getProposalForDeal(deal.id);
+}
+
+// =============================================================================
+// resolveWorkspaceIdForEvent(eventId): Used by upsert and addPackageToProposal
+// =============================================================================
+
+async function resolveWorkspaceIdForEvent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string
+): Promise<string | null> {
+  const { data: pubEvent } = await supabase
+    .from('events')
+    .select('workspace_id')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (pubEvent && (pubEvent as { workspace_id?: string }).workspace_id) {
+    return (pubEvent as { workspace_id: string }).workspace_id;
+  }
+  const { data: opsEvent } = await supabase
+    .schema('ops')
+    .from('events')
+    .select('project_id')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (!opsEvent || !(opsEvent as { project_id?: string }).project_id) return null;
+  const { data: proj } = await supabase
+    .schema('ops')
+    .from('projects')
+    .select('workspace_id')
+    .eq('id', (opsEvent as { project_id: string }).project_id)
+    .maybeSingle();
+  return proj && (proj as { workspace_id?: string }).workspace_id
+    ? (proj as { workspace_id: string }).workspace_id
+    : null;
+}
+
+// =============================================================================
+// resolveWorkspaceIdFromDeal(dealId): Used by addPackageToProposal and upsertProposal
+// =============================================================================
+
+async function resolveWorkspaceIdFromDeal(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dealId: string
+): Promise<string | null> {
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('workspace_id')
+    .eq('id', dealId)
+    .maybeSingle();
+  return deal && (deal as { workspace_id?: string }).workspace_id
+    ? (deal as { workspace_id: string }).workspace_id
+    : null;
+}
+
+// =============================================================================
+// getExpandedPackageLineItems(packageId): Deep copy — items inside package (for preview + apply)
+// =============================================================================
+
+export interface ExpandedLineItem {
+  name: string;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  unitType: UnitType;
+  unitMultiplier: number;
+  category: ProposalLineItemCategory | null;
+  originPackageId: string | null;
+  actualCost: number | null;
+}
+
+export async function getExpandedPackageLineItems(
+  packageId: string
+): Promise<{ items: ExpandedLineItem[]; error?: string }> {
+  const supabase = await createClient();
+  const { data: pkg, error: pkgError } = await supabase
+    .from('packages')
+    .select('*')
+    .eq('id', packageId)
+    .single();
+  if (pkgError || !pkg) {
+    return { items: [], error: pkgError?.message ?? 'Package not found.' };
+  }
+  const def = pkg.definition as { blocks?: DefinitionBlock[] } | null;
+  const blocks = def?.blocks ?? [];
+  const catalogIds: { id: string; qty: number }[] = [];
+  for (const b of blocks) {
+    if (b.type === 'line_item' && 'catalogId' in b && 'quantity' in b) {
+      const q = Number((b as { quantity: number }).quantity) || 1;
+      catalogIds.push({ id: (b as { catalogId: string }).catalogId, qty: q });
+    } else if (b.type === 'line_item_group' && 'items' in b) {
+      const items = (b as { items: string[] }).items ?? [];
+      for (const id of items) {
+        if (id) catalogIds.push({ id, qty: 1 });
+      }
+    }
+  }
+  const pkgRow = pkg as { unit_type?: string; unit_multiplier?: number };
+  const defaultUnitType = (pkgRow.unit_type === 'hour' || pkgRow.unit_type === 'day' ? pkgRow.unit_type : 'flat') as UnitType;
+  const defaultUnitMultiplier = Number(pkgRow.unit_multiplier) > 0 ? Number(pkgRow.unit_multiplier) : 1;
+
+  if (catalogIds.length === 0) {
+    const cat = (pkg.category as string) as ProposalLineItemCategory;
+    return {
+      items: [
+        {
+          name: pkg.name,
+          description: pkg.description ?? null,
+          quantity: 1,
+          unitPrice: Number(pkg.price),
+          unitType: defaultUnitType,
+          unitMultiplier: defaultUnitMultiplier,
+          category: cat ?? null,
+          originPackageId: pkg.id,
+          actualCost: pkg.target_cost != null ? Number(pkg.target_cost) : null,
+        },
+      ],
+    };
+  }
+  const ids = [...new Set(catalogIds.map((c) => c.id))];
+  const { data: catalogPackages, error: catError } = await supabase
+    .from('packages')
+    .select('id, name, description, price, category, target_cost, unit_type, unit_multiplier')
+    .in('id', ids);
+  if (catError || !catalogPackages?.length) {
+    return { items: [], error: catError?.message ?? 'Could not load package ingredients.' };
+  }
+  type CatalogRow = { id: string; name: string; description: string | null; price: number; category: string; target_cost: number | null; unit_type?: string; unit_multiplier?: number };
+  const byId = new Map((catalogPackages as CatalogRow[]).map((r) => [r.id, r]));
+  const items: ExpandedLineItem[] = [];
+  for (const { id, qty } of catalogIds) {
+    const ref = byId.get(id);
+    if (!ref) continue;
+    const cat = (ref.category as string) as ProposalLineItemCategory;
+    const ut = (ref.unit_type === 'hour' || ref.unit_type === 'day' ? ref.unit_type : 'flat') as UnitType;
+    const um = Number(ref.unit_multiplier) > 0 ? Number(ref.unit_multiplier) : 1;
+    items.push({
+      name: ref.name,
+      description: ref.description ?? null,
+      quantity: qty,
+      unitPrice: Number(ref.price),
+      unitType: ut,
+      unitMultiplier: um,
+      category: cat ?? null,
+      originPackageId: ref.id,
+      actualCost: ref.target_cost != null ? Number(ref.target_cost) : null,
+    });
+  }
+  return { items };
+}
+
+// =============================================================================
+// addPackageToProposal(eventId, packageId): Append expanded package items to draft (deep copy)
+// =============================================================================
+
+export interface AddPackageToProposalResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function addPackageToProposal(
+  dealId: string,
+  packageId: string
+): Promise<AddPackageToProposalResult> {
+  const supabase = await createClient();
+  const workspaceId = await resolveWorkspaceIdFromDeal(supabase, dealId);
+  if (!workspaceId) {
+    return { success: false, error: 'Deal not found or workspace could not be resolved.' };
+  }
+  const { data: pkgRow } = await supabase
+    .from('packages')
+    .select('name, price')
+    .eq('id', packageId)
+    .maybeSingle();
+  const pkg = pkgRow as { name?: string; price?: number } | null;
+  const displayGroupName = pkg?.name ?? null;
+  const bundlePrice = pkg?.price != null && Number.isFinite(Number(pkg.price)) ? Number(pkg.price) : 0;
+
+  const { items: expanded, error: expandError } = await getExpandedPackageLineItems(packageId);
+  if (expandError || expanded.length === 0) {
+    return { success: false, error: expandError ?? 'Package has no items to add.' };
+  }
+
+  const packageInstanceId = crypto.randomUUID();
+
+  const { data: existing } = await supabase
+    .from('proposals')
+    .select('id')
+    .eq('deal_id', dealId)
+    .eq('status', 'draft')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let proposalId: string;
+  let nextSortOrder: number;
+
+  if (existing?.id) {
+    proposalId = existing.id;
+    const { data: maxRow } = await supabase
+      .from('proposal_items')
+      .select('sort_order')
+      .eq('proposal_id', proposalId)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    nextSortOrder = (maxRow && typeof (maxRow as { sort_order: number }).sort_order === 'number'
+      ? (maxRow as { sort_order: number }).sort_order + 1
+      : 0);
+  } else {
+    const publicToken = crypto.randomUUID();
+    const { data: inserted, error: insertError } = await supabase
+      .from('proposals')
+      .insert({
+        workspace_id: workspaceId,
+        deal_id: dealId,
+        status: 'draft',
+        public_token: publicToken,
+      })
+      .select('id')
+      .single();
+    if (insertError || !inserted?.id) {
+      return { success: false, error: insertError?.message ?? 'Failed to create proposal.' };
+    }
+    proposalId = inserted.id;
+    nextSortOrder = 0;
+  }
+
+  // Header Row + Zero-Dollar Children: insert bundle header then children at $0 with original_base_price
+  const headerRow = {
+    proposal_id: proposalId,
+    package_id: null as string | null,
+    origin_package_id: packageId,
+    package_instance_id: packageInstanceId,
+    display_group_name: displayGroupName,
+    is_client_visible: true,
+    is_package_header: true,
+    original_base_price: null as number | null,
+    unit_type: 'flat' as const,
+    unit_multiplier: 1,
+    name: displayGroupName ?? 'Package',
+    description: null as string | null,
+    quantity: 1,
+    unit_price: bundlePrice,
+    override_price: null,
+    actual_cost: null,
+    definition_snapshot: null,
+    sort_order: nextSortOrder,
+  };
+  const childRows = expanded.map((item, i) => ({
+    proposal_id: proposalId,
+    package_id: null as string | null,
+    origin_package_id: item.originPackageId,
+    package_instance_id: packageInstanceId,
+    display_group_name: displayGroupName,
+    is_client_visible: true,
+    is_package_header: false,
+    original_base_price: item.unitPrice,
+    unit_type: item.unitType ?? 'flat',
+    unit_multiplier: item.unitMultiplier ?? 1,
+    name: item.name,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: 0,
+    override_price: null,
+    actual_cost: item.actualCost,
+    definition_snapshot: item.category ? { margin_meta: { category: item.category } } : null,
+    sort_order: nextSortOrder + 1 + i,
+  }));
+  const { error: itemsError } = await supabase.from('proposal_items').insert([headerRow, ...childRows]);
+  if (itemsError) {
+    return { success: false, error: itemsError.message };
+  }
+  return { success: true };
+}
+
+// =============================================================================
 // getPackages(workspaceId): Fetch all active packages for a workspace
 // =============================================================================
 
@@ -64,34 +429,99 @@ export async function getPackages(workspaceId: string): Promise<GetPackagesResul
   return { packages: (data ?? []) as Package[] };
 }
 
+/** Fetch all packages for Catalog page (active + archived). */
+export async function getCatalogPackages(workspaceId: string): Promise<GetPackagesResult> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('packages')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('is_active', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (error) {
+    return { packages: [], error: error.message };
+  }
+
+  return { packages: (data ?? []) as Package[] };
+}
+
 // =============================================================================
-// upsertProposal(eventId, items): Create or update draft proposal and line items
+// deleteProposalItemsByPackageInstanceId(proposalId, packageInstanceId): Remove entire burst group
+// =============================================================================
+
+export async function deleteProposalItemsByPackageInstanceId(
+  proposalId: string,
+  packageInstanceId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('proposal_items')
+    .delete()
+    .eq('proposal_id', proposalId)
+    .eq('package_instance_id', packageInstanceId);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// =============================================================================
+// unpackPackageInstance(proposalId, packageInstanceId): Break package into a la carte line items
+// =============================================================================
+
+export async function unpackPackageInstance(
+  proposalId: string,
+  packageInstanceId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { error: deleteError } = await supabase
+    .from('proposal_items')
+    .delete()
+    .eq('proposal_id', proposalId)
+    .eq('package_instance_id', packageInstanceId)
+    .eq('is_package_header', true);
+  if (deleteError) return { success: false, error: deleteError.message };
+
+  const { data: children } = await supabase
+    .from('proposal_items')
+    .select('id, original_base_price')
+    .eq('proposal_id', proposalId)
+    .eq('package_instance_id', packageInstanceId);
+  if (children?.length) {
+    for (const row of children as { id: string; original_base_price: number | null }[]) {
+      const { error: updateError } = await supabase
+        .from('proposal_items')
+        .update({
+          unit_price: row.original_base_price ?? 0,
+          package_instance_id: null,
+          display_group_name: null,
+        })
+        .eq('id', row.id);
+      if (updateError) return { success: false, error: updateError.message };
+    }
+  }
+  return { success: true };
+}
+
+// =============================================================================
+// upsertProposal(dealId, items): Create or update draft proposal and line items (Liquid phase)
 // =============================================================================
 
 export async function upsertProposal(
-  eventId: string,
+  dealId: string,
   items: ProposalLineItemInput[]
 ): Promise<UpsertProposalResult> {
   const supabase = await createClient();
-
-  // 1. Get event for workspace_id
-  const { data: event, error: eventError } = await supabase
-    .from('events')
-    .select('id, workspace_id')
-    .eq('id', eventId)
-    .single();
-
-  if (eventError || !event) {
-    return { proposalId: null, total: 0, error: eventError?.message ?? 'Event not found' };
+  const workspaceId = await resolveWorkspaceIdFromDeal(supabase, dealId);
+  if (!workspaceId) {
+    return { proposalId: null, total: 0, error: 'Deal not found or workspace could not be resolved.' };
   }
 
-  const workspaceId = (event as { workspace_id: string }).workspace_id;
-
-  // 2. Find existing draft proposal for this event, or create one
+  // 2. Find existing draft proposal for this deal, or create one
   const { data: existing } = await supabase
     .from('proposals')
     .select('id')
-    .eq('event_id', eventId)
+    .eq('deal_id', dealId)
     .eq('status', 'draft')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -108,7 +538,7 @@ export async function upsertProposal(
       .from('proposals')
       .insert({
         workspace_id: workspaceId,
-        event_id: eventId,
+        deal_id: dealId,
         status: 'draft',
         public_token: publicToken,
       })
@@ -121,16 +551,33 @@ export async function upsertProposal(
     proposalId = inserted.id;
   }
 
-  // 3. Insert proposal_items and compute total
+  // 3. Insert proposal_items (snapshot on insert: no live link; origin_package_id for analytics only)
   let total = 0;
   if (items.length > 0) {
+    const originId = (item: ProposalLineItemInput) =>
+      item.originPackageId ?? item.packageId ?? null;
+    const multiplier = (item: ProposalLineItemInput) =>
+      (item.unitType === 'hour' || item.unitType === 'day')
+        ? Math.max(0, Number(item.unitMultiplier) || 1)
+        : 1;
     const rows = items.map((item, index) => ({
       proposal_id: proposalId,
-      package_id: item.packageId ?? null,
+      package_id: null as string | null,
+      origin_package_id: originId(item),
+      package_instance_id: item.packageInstanceId ?? null,
+      display_group_name: item.displayGroupName ?? null,
+      is_client_visible: item.isClientVisible ?? true,
+      is_package_header: item.isPackageHeader ?? false,
+      original_base_price: item.originalBasePrice != null && Number.isFinite(Number(item.originalBasePrice)) ? Number(item.originalBasePrice) : null,
+      unit_type: (item.unitType === 'hour' || item.unitType === 'day' ? item.unitType : 'flat') as string,
+      unit_multiplier: multiplier(item),
       name: item.name,
       description: item.description ?? null,
       quantity: item.quantity,
       unit_price: String(item.unitPrice),
+      override_price: item.overridePrice != null && Number.isFinite(Number(item.overridePrice)) ? Number(item.overridePrice) : null,
+      actual_cost: item.actualCost != null && Number.isFinite(Number(item.actualCost)) ? Number(item.actualCost) : null,
+      definition_snapshot: item.category ? { margin_meta: { category: item.category } } : null,
       sort_order: index,
     }));
 
@@ -140,7 +587,14 @@ export async function upsertProposal(
       return { proposalId: null, total: 0, error: itemsError.message };
     }
 
-    total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    const effectivePrice = (item: ProposalLineItemInput) =>
+      item.overridePrice != null && Number.isFinite(Number(item.overridePrice))
+        ? Number(item.overridePrice)
+        : item.unitPrice;
+    total = items.reduce(
+      (sum, item) => sum + item.quantity * multiplier(item) * effectivePrice(item),
+      0
+    );
   }
 
   return { proposalId, total };
@@ -184,9 +638,61 @@ export async function publishProposal(proposalId: string): Promise<PublishPropos
 }
 
 // =============================================================================
+// sendProposalLinkToRecipients(publicUrl, recipientEmails, dealTitle?)
+// Reply-To pattern (no Gmail/OAuth): sends via Resend; reply_to is set to the current user's
+// email (auth.getUser()) so replies go to their inbox. Uses Resend only; if RESEND_API_KEY
+// is not set, returns { sent: 0, failed: N, notConfigured: true }.
+// =============================================================================
+
+export type SendProposalLinkResult = {
+  sent: number;
+  failed: number;
+  notConfigured?: boolean;
+  firstError?: string;
+};
+
+export async function sendProposalLinkToRecipients(
+  publicUrl: string,
+  recipientEmails: string[],
+  dealTitle?: string | null
+): Promise<SendProposalLinkResult> {
+  const normalized = [...new Set(recipientEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (normalized.length === 0) return { sent: 0, failed: 0 };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle()
+    : { data: null };
+  const senderName =
+    (profile as { full_name?: string | null } | null)?.full_name?.trim() ||
+    (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+    null;
+  const senderReplyTo = user?.email?.trim() || null;
+  const senderOptions =
+    senderName || senderReplyTo
+      ? { senderName: senderName ?? undefined, senderReplyTo: senderReplyTo ?? undefined }
+      : undefined;
+
+  let sent = 0;
+  let failed = 0;
+  let firstError: string | undefined;
+  for (const to of normalized) {
+    const result = await sendProposalLinkEmail(to, publicUrl, dealTitle, senderOptions);
+    if (result.ok) sent++;
+    else {
+      failed++;
+      if (!firstError) firstError = result.error;
+    }
+  }
+  const notConfigured = sent === 0 && failed > 0 && firstError?.includes('not configured');
+  return { sent, failed, ...(firstError ? { firstError } : {}), ...(notConfigured ? { notConfigured: true } : {}) };
+}
+
+// =============================================================================
 // signProposal(token, signatureName): Public client signs proposal by token
-// Updates proposal status to 'accepted', creates contract with status 'signed'.
-// Uses service-role to bypass RLS (caller is unauthenticated).
+// Sets proposal status to 'accepted' and accepted_at. Contract is created at
+// handover (when event exists), not here.
 // =============================================================================
 
 export async function signProposal(
@@ -199,10 +705,11 @@ export async function signProposal(
   }
 
   const supabase = getSystemClient();
+  const now = new Date().toISOString();
 
   const { data: proposal, error: fetchError } = await supabase
     .from('proposals')
-    .select('id, event_id, workspace_id')
+    .select('id, deal_id, workspace_id')
     .eq('public_token', token.trim())
     .in('status', ['sent', 'viewed'])
     .maybeSingle();
@@ -215,7 +722,8 @@ export async function signProposal(
     .from('proposals')
     .update({
       status: 'accepted',
-      updated_at: new Date().toISOString(),
+      accepted_at: now,
+      updated_at: now,
     })
     .eq('id', proposal.id);
 
@@ -223,18 +731,34 @@ export async function signProposal(
     return { success: false, error: updateError.message };
   }
 
-  const now = new Date().toISOString();
-  const { error: contractError } = await supabase.from('contracts').insert({
-    workspace_id: proposal.workspace_id,
-    event_id: proposal.event_id,
-    status: 'signed',
-    signed_at: now,
-    pdf_url: null,
-  });
+  // Contract is created at handover when the event is created (see handover-deal.ts)
+  return { success: true };
+}
 
-  if (contractError) {
-    return { success: false, error: contractError.message };
+// =============================================================================
+// revertProposalToDraft(proposalId): Set status back to 'draft' (testing/admin)
+// Uses server client so RLS enforces workspace access. Use to unlock a signed
+// proposal for editing (e.g. test events). Contract remains signed; this only
+// unlocks the proposal builder.
+// =============================================================================
+
+export type RevertProposalResult = { success: true } | { success: false; error: string };
+
+export async function revertProposalToDraft(proposalId: string): Promise<RevertProposalResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('proposals')
+    .update({
+      status: 'draft',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', proposalId)
+    .eq('status', 'accepted')
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    return { success: false, error: error?.message ?? 'Proposal not found or not accepted.' };
   }
-
   return { success: true };
 }

@@ -12,7 +12,6 @@ import { createClient } from '@/shared/api/supabase/server';
  * Returns the active workspace ID for the current user.
  * Must filter by user_id – RLS lets you see all members of your workspaces,
  * so without this we could get another member's row.
- * Orders by role then created_at (same as dashboard layout).
  */
 export async function getActiveWorkspaceId(): Promise<string | null> {
   try {
@@ -24,8 +23,6 @@ export async function getActiveWorkspaceId(): Promise<string | null> {
       .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', user.id)
-      .order('role')
-      .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
 

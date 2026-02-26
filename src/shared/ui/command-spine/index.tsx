@@ -13,8 +13,23 @@ import {
   FileText,
   Receipt,
   LayoutList,
+  Network,
+  Building2,
+  Loader2,
 } from 'lucide-react';
 import { searchGlobal, type SearchGlobalResult } from '@/shared/actions/search-global';
+import { useCommandPaletteOrg } from '@/shared/ui/providers/CommandPaletteContext';
+
+/** Minimal org shape for command palette network search (injected from app/feature layer). */
+export interface CommandSpineNetworkOrg {
+  id: string;
+  name: string;
+}
+
+export interface CommandSpineNetworkProps {
+  searchNetworkOrgs: (orgId: string, query: string) => Promise<CommandSpineNetworkOrg[]>;
+  summonPartner: (orgId: string, partnerId: string, role: string) => Promise<{ ok: boolean; error?: string }>;
+}
 
 const STATIC_NAV = [
   { label: 'Overview', href: '/', icon: LayoutGrid },
@@ -22,6 +37,7 @@ const STATIC_NAV = [
   { label: 'Calendar', href: '/calendar', icon: CalendarDays },
   { label: 'Production (CRM)', href: '/crm', icon: FolderKanban },
   { label: 'Finance', href: '/finance', icon: Wallet },
+  { label: 'Network', href: '/network', icon: Network },
 ] as const;
 
 function extractGigIdFromPath(pathname: string): string | null {
@@ -32,14 +48,24 @@ function extractGigIdFromPath(pathname: string): string | null {
   return null;
 }
 
-export function CommandSpine() {
+export interface CommandSpineProps {
+  /** When provided, enables Network group (search orgs, add to Inner Circle). Injected from app layer. */
+  network?: CommandSpineNetworkProps;
+}
+
+export function CommandSpine({ network }: CommandSpineProps = {}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<SearchGlobalResult | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [networkOrgs, setNetworkOrgs] = useState<CommandSpineNetworkOrg[]>([]);
+  const [networkLoading, setNetworkLoading] = useState(false);
+  const [networkPendingId, setNetworkPendingId] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const gigId = extractGigIdFromPath(pathname ?? '');
+  const currentOrgId = useCommandPaletteOrg();
+  const isOnNetwork = pathname === '/network';
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -49,6 +75,7 @@ export function CommandSpine() {
         if (!open) {
           setSearch('');
           setSearchResults(null);
+          setNetworkOrgs([]);
         }
       }
     };
@@ -80,10 +107,50 @@ export function CommandSpine() {
     return () => clearTimeout(t);
   }, [search, runSearch]);
 
+  const runNetworkSearch = useCallback(async (query: string) => {
+    const q = query.trim();
+    if (!network || !currentOrgId || q.length < 1) {
+      setNetworkOrgs([]);
+      return;
+    }
+    setNetworkLoading(true);
+    try {
+      const results = await network.searchNetworkOrgs(currentOrgId, q);
+      setNetworkOrgs(results);
+    } finally {
+      setNetworkLoading(false);
+    }
+  }, [network, currentOrgId]);
+
+  useEffect(() => {
+    if (!isOnNetwork || !currentOrgId) {
+      setNetworkOrgs([]);
+      return;
+    }
+    const t = setTimeout(() => runNetworkSearch(search), 150);
+    return () => clearTimeout(t);
+  }, [isOnNetwork, currentOrgId, search, runNetworkSearch]);
+
   const handleSelect = (href: string) => {
     router.push(href);
     setOpen(false);
   };
+
+  const handleAddPartner = useCallback(async (org: CommandSpineNetworkOrg) => {
+    if (!network || !currentOrgId) return;
+    setNetworkPendingId(org.id);
+    try {
+      const result = await network.summonPartner(currentOrgId, org.id, 'partner');
+      if (result.ok) {
+        setOpen(false);
+        setSearch('');
+        setNetworkOrgs([]);
+        router.refresh();
+      }
+    } finally {
+      setNetworkPendingId(null);
+    }
+  }, [network, currentOrgId, router]);
 
   const hasSearchResults =
     searchResults &&
@@ -138,6 +205,37 @@ export function CommandSpine() {
             );
           })}
         </Command.Group>
+
+        {/* Context: Network — when on /network and org is set, search orgs and add to Inner Circle (requires network prop from app) */}
+        {network && isOnNetwork && currentOrgId && (
+          <Command.Group heading="Network" forceMount className={groupHeadingClass}>
+            {networkLoading && search.trim().length >= 1 && (
+              <div className="px-3 py-2 text-sm text-ink-muted flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" /> Searching organizations…
+              </div>
+            )}
+            {!networkLoading && networkOrgs.length > 0 && networkOrgs.map((org) => (
+              <Command.Item
+                key={org.id}
+                value={`${org.name} ${org.id}`}
+                onSelect={() => handleAddPartner(org)}
+                disabled={networkPendingId === org.id}
+                className={itemClass}
+              >
+                {networkPendingId === org.id ? (
+                  <Loader2 size={18} className="shrink-0 animate-spin text-ink-muted" />
+                ) : (
+                  <Building2 size={18} className="shrink-0 text-ink-muted transition-colors" strokeWidth={1.5} />
+                )}
+                <span className="truncate">{org.name}</span>
+                <span className="text-ink-muted text-xs">Add to Inner Circle</span>
+              </Command.Item>
+            ))}
+            {!networkLoading && search.trim().length >= 1 && networkOrgs.length === 0 && (
+              <div className="px-3 py-2 text-sm text-ink-muted">No organizations found</div>
+            )}
+          </Command.Group>
+        )}
 
         {/* Context: This Event — when inside /crm/[id] or /events/[id] */}
         {gigId && (

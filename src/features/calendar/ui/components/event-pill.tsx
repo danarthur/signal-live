@@ -3,15 +3,16 @@
 import { format } from 'date-fns';
 import type { CalendarEvent, CalendarEventColor } from '@/features/calendar/model/types';
 
+/** Border + bg tint only; text uses semantic tokens for visibility on dark theme. */
 const COLOR_CLASSES: Record<CalendarEventColor, string> = {
   emerald:
-    'bg-emerald-500/20 text-emerald-900 dark:bg-emerald-500/40 border border-emerald-500/30 dark:border-emerald-400/50',
+    'bg-emerald-500/25 border border-emerald-500/40 dark:bg-emerald-500/30 dark:border-emerald-400/50',
   amber:
-    'bg-amber-500/20 text-amber-900 dark:bg-amber-500/40 border border-amber-500/30 dark:border-amber-400/50',
+    'bg-amber-500/25 border border-amber-500/40 dark:bg-amber-500/30 dark:border-amber-400/50',
   rose:
-    'bg-rose-500/20 text-rose-900 dark:bg-rose-500/40 border border-rose-500/30 dark:border-rose-400/50',
+    'bg-rose-500/25 border border-rose-500/40 dark:bg-rose-500/30 dark:border-rose-400/50',
   blue:
-    'bg-blue-500/20 text-blue-900 dark:bg-blue-500/40 border border-blue-500/30 dark:border-blue-400/50',
+    'bg-blue-500/25 border border-blue-500/40 dark:bg-blue-500/30 dark:border-blue-400/50',
 };
 
 /** Time range: earliest to latest. */
@@ -37,8 +38,8 @@ export function EventPill({ event, className = '' }: EventPillProps) {
       className={`calendar-event-pill rounded-lg px-3 py-2 flex flex-col gap-1 min-w-0 backdrop-blur-sm cursor-pointer antialiased ${colorClass} ${className}`}
       title={`${event.title} — ${timeRange}`}
     >
-      <span className="text-xs font-semibold text-left truncate">{event.title}</span>
-      <span className="text-[10px] font-normal opacity-90 tabular-nums truncate">{timeRange}</span>
+      <span className="text-xs font-semibold text-left truncate text-ink">{event.title}</span>
+      <span className="text-[10px] font-normal text-ink/80 tabular-nums truncate">{timeRange}</span>
     </div>
   );
 }

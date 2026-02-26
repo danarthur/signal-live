@@ -89,8 +89,8 @@ export function CueInspector({
     return (
       <LiquidPanel className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <MousePointerClick size={24} className="text-stone-300" />
-          <p className="text-sm text-stone-400">Select a cue to edit</p>
+          <MousePointerClick size={24} className="text-ink-muted/70" />
+          <p className="text-sm text-ink-muted">Select a cue to edit</p>
         </div>
       </LiquidPanel>
     );
@@ -100,11 +100,11 @@ export function CueInspector({
     <LiquidPanel className="h-full flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-ink-muted">Cue Inspector</h3>
+          <h3 className="text-xs font-medium uppercase tracking-wider text-ink-muted">Cue Inspector</h3>
           <p className="text-xs text-ink-muted mt-1">Adjust timing, type, and notes.</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] uppercase tracking-widest text-ink-muted">Starts at</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">Starts at</p>
           <div className="font-mono text-4xl font-light text-ink tracking-tight">
             {computedStartTime ?? '--:--'}
           </div>
@@ -113,19 +113,19 @@ export function CueInspector({
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <label className="text-[10px] uppercase tracking-widest text-ink-muted">Title</label>
+          <label className="text-xs font-medium text-ink-muted uppercase tracking-wider">Title</label>
           <input
             value={(formState.title as string) ?? ''}
             onChange={(event) => updateField('title', event.target.value)}
-            className="w-full bg-[var(--glass-bg)] rounded-xl px-4 py-3 text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-2 focus:ring-[var(--glass-border-hover)] transition-all border border-[var(--glass-border)]"
+            className="w-full bg-[var(--glass-bg)] rounded-xl px-4 py-3 text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-all border border-[var(--glass-border)]"
             placeholder="Cue title"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-2">
-            <label className="text-[10px] uppercase tracking-widest text-ink-muted">Duration</label>
-            <div className="w-full bg-[var(--glass-bg)] rounded-xl px-4 py-3 text-ink placeholder:text-ink-muted/50 focus-within:ring-2 focus-within:ring-[var(--glass-border-hover)] transition-all border border-[var(--glass-border)] flex items-center gap-2">
+            <label className="text-xs font-medium text-ink-muted uppercase tracking-wider">Duration</label>
+            <div className="w-full bg-[var(--glass-bg)] rounded-xl px-4 py-3 text-ink placeholder:text-ink-muted/50 focus-within:ring-2 focus-within:ring-[var(--ring)] transition-all border border-[var(--glass-border)] flex items-center gap-2">
               <Clock size={14} className="text-ink-muted" />
               <input
                 type="number"
@@ -138,7 +138,7 @@ export function CueInspector({
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[10px] uppercase tracking-widest text-ink-muted">Type</label>
+            <label className="text-xs font-medium text-ink-muted uppercase tracking-wider">Type</label>
             <div className="liquid-panel liquid-panel-nested !rounded-2xl !p-1 flex items-center gap-2">
               {typeOptions.map((option) => {
                 const Icon = option.icon;
@@ -161,7 +161,7 @@ export function CueInspector({
                 );
               })}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-ink-muted uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-xs text-ink-muted uppercase tracking-wider">
               <activeType.icon size={12} />
               {activeType.label}
             </div>
@@ -169,13 +169,13 @@ export function CueInspector({
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-[10px] uppercase tracking-widest text-ink-muted">Notes</label>
+          <label className="text-xs font-medium text-ink-muted uppercase tracking-wider">Notes</label>
           <textarea
             value={(formState.notes as string) ?? ''}
             onChange={(event) => updateField('notes', event.target.value)}
             rows={6}
             className={cn(
-              "w-full bg-[var(--glass-bg)] rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-2 focus:ring-[var(--glass-border-hover)] transition-all border border-[var(--glass-border)]",
+              "w-full bg-[var(--glass-bg)] rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-all border border-[var(--glass-border)]",
               "resize-none outline-none min-h-[120px]"
             )}
             placeholder="Add cue notes..."
@@ -187,7 +187,7 @@ export function CueInspector({
         <button
           type="button"
           onClick={onDuplicate}
-          className="h-10 flex items-center justify-center gap-2 rounded-lg bg-ink/5 hover:bg-ink/10 text-xs font-medium text-ink transition-colors"
+          className="h-10 flex items-center justify-center gap-2 rounded-lg bg-ink/5 hover:bg-ink/10 text-xs font-medium text-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         >
           <Copy size={12} />
           Duplicate
@@ -195,7 +195,7 @@ export function CueInspector({
         <button
           type="button"
           onClick={handleDelete}
-          className="h-10 flex items-center justify-center gap-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs font-medium text-rose-600 transition-colors"
+          className="h-10 flex items-center justify-center gap-2 rounded-lg bg-[var(--color-surface-error)] hover:opacity-90 text-xs font-medium text-[var(--color-signal-error)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         >
           <Trash2 size={12} />
           Delete
