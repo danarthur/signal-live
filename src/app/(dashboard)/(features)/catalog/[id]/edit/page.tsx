@@ -95,7 +95,9 @@ export default function CatalogEditPage() {
         setPrice(String(Number(p.price)));
         setFloorPrice(p.floor_price != null ? String(Number(p.floor_price)) : '');
         setTargetCost(p.target_cost != null ? String(Number(p.target_cost)) : '');
-        setSelectedTags(p.tags ?? []);
+        setSelectedTags(
+          (p.tags ?? []).map((t) => ({ ...t, workspace_id: p.workspace_id }))
+        );
         const meta = (p.definition as { ingredient_meta?: IngredientMeta } | null)?.ingredient_meta;
         if (meta) {
           setDurationHours(meta.duration_hours != null ? String(meta.duration_hours) : '');
