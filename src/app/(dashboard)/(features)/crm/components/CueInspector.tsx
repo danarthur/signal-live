@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useOptimistic, startTransition } 
 import { Clock, Mic, Sun, Video, Truck, Copy, Trash2, MousePointerClick } from 'lucide-react';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { cn } from '@/shared/lib/utils';
-import type { Cue, CueType } from '@/types/supabase';
+import type { Cue, CueType } from '@/app/(dashboard)/(features)/crm/actions/run-of-show-types';
 
 type CueInspectorProps = {
   selectedCue: Cue | null;

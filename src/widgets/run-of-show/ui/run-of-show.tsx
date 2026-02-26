@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-p
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { GripVertical, Mic, Sun, Video, Truck } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { Cue, CueType } from '@/types/supabase';
+import type { Cue, CueType } from '@/app/(dashboard)/(features)/crm/actions/run-of-show-types';
 import { fetchCues, updateCueOrder } from '@/app/(dashboard)/(features)/crm/actions/ros';
 
 /* --- ICONS MAPPING --- */

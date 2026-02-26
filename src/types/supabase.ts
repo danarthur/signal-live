@@ -1866,6 +1866,13 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
+// Convenience aliases for app imports (generated types use Database['public']['Tables']['table']['Row'])
+export type Package = Database['public']['Tables']['packages']['Row'];
+export type Proposal = Database['public']['Tables']['proposals']['Row'];
+export type ProposalItem = Database['public']['Tables']['proposal_items']['Row'];
+export type CueType = Database['public']['Enums']['cue_type'];
+export type PaymentMethod = Database['public']['Enums']['payment_method'];
+
 export const Constants = {
   cortex: {
     Enums: {},

@@ -7,7 +7,7 @@ import { GlassShell } from '@/shared/ui/glass-shell';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose, SheetBody } from '@/shared/ui/sheet';
 import { RunOfShow } from '@/widgets/run-of-show';
 import { CueInspector } from '@/app/(dashboard)/(features)/crm/components/CueInspector';
-import type { Cue } from '@/types/supabase';
+import type { Cue } from '@/app/(dashboard)/(features)/crm/actions/run-of-show-types';
 import { deleteCue, duplicateCue, updateCue, createCue, fetchCues } from '@/app/(dashboard)/(features)/crm/actions/ros';
 import type { EventSummary } from '@/entities/event';
 import { format as formatDate } from 'date-fns';

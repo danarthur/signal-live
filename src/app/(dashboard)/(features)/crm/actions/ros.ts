@@ -2,7 +2,7 @@
 
 import { createClient } from '@/shared/api/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { Cue, CueType } from '@/types/supabase';
+import type { Cue, CueType } from './run-of-show-types';
 
 export async function fetchCues(eventId: string): Promise<Cue[]> {
   const supabase = await createClient();
