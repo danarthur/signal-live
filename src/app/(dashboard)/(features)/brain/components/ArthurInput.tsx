@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { ArrowUp, Paperclip, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
-import ArthurVoice from '@/app/(dashboard)/(features)/brain/components/ArthurVoice';
+import IonVoice from '@/app/(dashboard)/(features)/brain/components/IonVoice';
 import { useSession } from '@/shared/ui/providers/SessionContext';
 
 type ArthurInputProps =
@@ -198,7 +198,7 @@ export const ArthurInput: React.FC<ArthurInputProps> = (props) => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
             >
-              <ArthurVoice />
+              <IonVoice />
             </motion.div>
           ) : (
             <div key="empty" className="w-14 h-14" />
