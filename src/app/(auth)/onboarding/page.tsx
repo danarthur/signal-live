@@ -54,7 +54,7 @@ async function getOnboardingState() {
     .eq('user_id', user.id);
   
   if (!workspaceError && workspaceData) {
-    workspaces = workspaceData as typeof workspaces;
+    workspaces = workspaceData as unknown as typeof workspaces;
   }
   
   // Full name: profile first, then auth user metadata
