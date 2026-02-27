@@ -12,7 +12,7 @@ import { startAuthentication } from '@simplewebauthn/browser';
 
 export type AuthenticatePasskeyResult =
   | { ok: true }
-  | { ok: false; error: string };
+  | { ok: false; error: string; _retry?: boolean };
 
 const CHALLENGE_EXPIRED_PATTERNS = [
   /challenge.*expired/i,
@@ -54,11 +54,9 @@ async function doAuthenticate(
     return { ok: false, error: 'Sign-in was cancelled.' };
   }
 
-  const verifyBody: { redirectTo?: string } = { ...credential };
   const redirectTo = opts.redirectTo?.trim();
-  if (redirectTo?.startsWith('/')) {
-    verifyBody.redirectTo = redirectTo;
-  }
+  const verifyBody =
+    redirectTo?.startsWith('/') ? { ...credential, redirectTo } : { ...credential };
 
   const verifyRes = await fetch(verifyUrl, {
     method: 'POST',
@@ -145,15 +143,15 @@ export async function runConditionalMediation(
     const credential = await startAuthentication({
       optionsJSON: authOptions,
       useConditionalMediation: true,
-    });
+    } as Parameters<typeof startAuthentication>[0]);
     if (!credential) {
       return { ok: false, error: 'Sign-in was cancelled.' };
     }
 
-    const verifyBody: { redirectTo?: string } = { ...credential };
-    if (redirectTo?.trim()?.startsWith('/')) {
-      verifyBody.redirectTo = redirectTo.trim();
-    }
+    const verifyBody =
+      redirectTo?.trim()?.startsWith('/')
+        ? { ...credential, redirectTo: redirectTo.trim() }
+        : { ...credential };
 
     const verifyRes = await fetch(verifyUrl, {
       method: 'POST',

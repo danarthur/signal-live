@@ -47,9 +47,10 @@ export async function submitPublicPayment(
   }
 
   const supabase = getSystemClient();
+  const db = supabase as any;
 
   // 1. Create payment for full remaining balance
-  const { error: payError } = await supabase.from('payments').insert({
+  const { error: payError } = await db.from('payments').insert({
     invoice_id: data.invoice.id,
     workspace_id: data.workspace.id,
     amount: data.balanceDue,
@@ -63,7 +64,7 @@ export async function submitPublicPayment(
   }
 
   // 2. Update invoice status to paid
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from('invoices')
     .update({ status: 'paid' })
     .eq('id', data.invoice.id);

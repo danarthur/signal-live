@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-/** Assignable in Member Forge (owner is set elsewhere). Phase 1: admin, manager, member, restricted (Observer). */
-export const ghostMemberRoleSchema = z.enum(['admin', 'manager', 'member', 'restricted']);
+/** Assignable in Member Forge. Includes owner for display/edit; action maps manager→member for DB. */
+export const ghostMemberRoleSchema = z.enum(['owner', 'admin', 'manager', 'member', 'restricted']);
 export type GhostMemberRole = z.infer<typeof ghostMemberRoleSchema>;
 
 export const upsertGhostMemberSchema = z.object({

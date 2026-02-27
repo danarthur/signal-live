@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
 import { getDeal } from '../actions/get-deal';
-import { getDealClientContext } from '../actions/get-deal-client';
+import { getDealClientContext, type DealClientContext } from '../actions/get-deal-client';
 import { getDealStakeholders } from '../actions/deal-stakeholders';
 import { getEventSummaryForPrism } from '../actions/get-event-summary';
 import { handoverDeal } from '../actions/handover-deal';

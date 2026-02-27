@@ -37,7 +37,11 @@ export function GhostClaimCard({ data, isPending }: GhostClaimCardProps) {
           </div>
         </div>
 
-        <form action={claimGhostOrganizationBySlug} className="mt-6">
+        <form
+          action={(formData: FormData): Promise<void> =>
+            claimGhostOrganizationBySlug(undefined as unknown, formData).then(() => {})}
+          className="mt-6"
+        >
           <input type="hidden" name="slug" value={data.slug} />
           <button
             type="submit"

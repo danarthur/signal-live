@@ -5,7 +5,7 @@ import { useActionState } from 'react';
 import { Building2, Loader2 } from 'lucide-react';
 import { createClient } from '@/shared/api/supabase/client';
 import { updateOrg } from '@/features/org-management/api';
-import { updateOrgIdentity } from '../api/actions';
+import { updateOrgIdentity, type UpdateOrgIdentityResult } from '../api/actions';
 import { ColorTuner } from './ColorTuner';
 import { Textarea } from '@/shared/ui/textarea';
 import { FloatingLabelInput } from '@/shared/ui/floating-label-input';
@@ -63,7 +63,7 @@ export function IdentityForm({ orgId, defaultValues, onValuesChange, submitLabel
 
   React.useEffect(() => syncToMirror(), [syncToMirror]);
 
-  const [state, submitAction, isPending] = useActionState(updateOrgIdentity, null as { ok: boolean; error?: string } | null);
+  const [state, submitAction, isPending] = useActionState(updateOrgIdentity, null as UpdateOrgIdentityResult | null);
 
   const handleLogoFile = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {

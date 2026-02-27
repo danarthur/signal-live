@@ -7,7 +7,7 @@ import { useWorkspace } from '@/shared/ui/providers/WorkspaceProvider';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { Command } from 'cmdk';
 import { Building2, User, MapPin, Plus, ChevronRight, ChevronDown } from 'lucide-react';
-import { createDeal } from '../actions/deal-actions';
+import { createDeal, type CreateDealInput } from '../actions/deal-actions';
 import { checkDateFeasibility, type FeasibilityStatus, type CheckDateFeasibilityResult } from '../actions/check-date-feasibility';
 import { searchOmni, getVenueSuggestions, type OmniResult, type VenueSuggestion } from '../actions/lookup';
 import { CalendarPanel, parseLocalDateString } from './ceramic-date-picker';
@@ -277,7 +277,7 @@ export function CreateGigModal({ open, onClose, addOptimisticGig }: CreateGigMod
       addOptimisticGig({ type: 'add', gig: optimisticGig });
       const result = await createDeal({
         proposedDate: eventDate,
-        eventArchetype: eventArchetype ?? undefined,
+        eventArchetype: (eventArchetype ?? undefined) as CreateDealInput['eventArchetype'],
         title: title.trim() || undefined,
         organizationId: selectedClient?.type === 'org' ? selectedClient.id : selectedClient?.organizationId ?? undefined,
         mainContactId: selectedClient?.type === 'contact' ? selectedClient.id : undefined,

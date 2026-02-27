@@ -5,9 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateRegistrationOptions } from '@simplewebauthn/server';
+import { generateRegistrationOptions, type AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { isoUint8Array } from '@simplewebauthn/server/helpers';
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
 import { createClient } from '@/shared/api/supabase/server';
 import { getSystemClient } from '@/shared/api/supabase/system';
 

@@ -319,7 +319,14 @@ export default function CatalogEditPage() {
               id="edit-tags"
               workspaceId={workspaceId ?? null}
               value={selectedTags}
-              onChange={setSelectedTags}
+              onChange={(tags) =>
+                setSelectedTags(
+                  tags.map((t) => ({
+                    ...t,
+                    workspace_id: t.workspace_id ?? workspaceId ?? '',
+                  }))
+                )
+              }
               getWorkspaceTags={getWorkspaceTags}
               createWorkspaceTag={createWorkspaceTag}
               placeholder="Type to search or create…"

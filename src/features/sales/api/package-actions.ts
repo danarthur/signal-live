@@ -148,9 +148,11 @@ async function fetchTagsForPackages(
     .select('package_id, workspace_tags(id, label, color)')
     .in('package_id', packageIds);
   const map = new Map<string, PackageTag[]>();
+  type TagShape = { id: string; label: string; color: string };
   for (const row of data ?? []) {
     const pkgId = (row as { package_id: string }).package_id;
-    const wt = (row as { workspace_tags: { id: string; label: string; color: string } | null }).workspace_tags;
+    const raw = (row as { workspace_tags: TagShape | TagShape[] | null }).workspace_tags;
+    const wt = Array.isArray(raw) ? raw[0] ?? null : raw;
     if (!wt) continue;
     const list = map.get(pkgId) ?? [];
     list.push({ id: wt.id, label: wt.label, color: wt.color });
@@ -250,7 +252,7 @@ export async function createPackage(
     );
   }
   const tagsMap = await fetchTagsForPackages(supabase, [pkg.id]);
-  return { package: { ...pkg, tags: tagsMap.get(pkg.id) ?? [] } };
+  return { package: { ...pkg, tags: tagsMap.get(pkg.id) ?? [] } as PackageWithTags };
 }
 
 export async function updatePackage(
@@ -294,7 +296,7 @@ export async function updatePackage(
   if (input.definition !== undefined) updates.definition = input.definition;
   if (input.tagIds !== undefined) {
     await supabase.from('package_tags').delete().eq('package_id', packageId);
-    const ids = input.tagIds.filter(Boolean);
+    const ids = (input.tagIds ?? []).filter(Boolean);
     if (ids.length > 0) {
       await supabase.from('package_tags').insert(ids.map((tag_id) => ({ package_id: packageId, tag_id })));
     }
@@ -304,7 +306,7 @@ export async function updatePackage(
     const pkg = (data ?? null) as Package | null;
     if (pkg) {
       const tagsMap = await fetchTagsForPackages(supabase, [pkg.id]);
-      return { package: { ...pkg, tags: tagsMap.get(pkg.id) ?? [] } };
+      return { package: { ...pkg, tags: tagsMap.get(pkg.id) ?? [] } as PackageWithTags };
     }
     return { package: null };
   }
@@ -320,5 +322,5 @@ export async function updatePackage(
   }
   const pkg = data as Package;
   const tagsMap = await fetchTagsForPackages(supabase, [pkg.id]);
-  return { package: { ...pkg, tags: tagsMap.get(pkg.id) ?? [] } };
+  return { package: { ...pkg, tags: tagsMap.get(pkg.id) ?? [] } as PackageWithTags };
 }

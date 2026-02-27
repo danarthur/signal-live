@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getActiveWorkspaceId } from '@/shared/lib/workspace';
 import { getSession } from '@/shared/lib/auth/session';
 import { getSystemClient } from '@/shared/api/supabase/system';
-import type { Database } from '@/types/supabase';
 
 /** EventSnippet shape for EventStatus / Production Schedule */
 interface EventSnippet {
@@ -13,14 +12,22 @@ interface EventSnippet {
   location_name?: string;
 }
 
-type EventsRow = Database['public']['Tables']['events']['Row'];
+/** Row shape from events query (legacy public.events); avoids depending on generated Tables. */
+interface EventsQueryRow {
+  id: string;
+  title: string | null;
+  status: string;
+  starts_at: string;
+  location_name?: string | null;
+}
 
 export async function GET() {
   try {
     const workspaceId = (await getActiveWorkspaceId()) ?? (await getSession()).workspace.id;
     const supabase = getSystemClient();
-
-    const { data: eventsData, error: eventsError } = await supabase
+    // Legacy public.events not in generated Database type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: eventsData, error: eventsError } = await (supabase as any)
       .from('events')
       .select('id, title, status, starts_at, location_name')
       .eq('workspace_id', workspaceId)
@@ -36,7 +43,7 @@ export async function GET() {
       );
     }
 
-    const rows = (eventsData ?? []) as EventsRow[];
+    const rows = (eventsData ?? []) as EventsQueryRow[];
     const snippets: EventSnippet[] = rows.map((e) => ({
       id: e.id,
       title: e.title ?? 'Untitled',

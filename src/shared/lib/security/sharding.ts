@@ -67,7 +67,7 @@ export async function encryptShardForGuardian(
   const cipher = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv, tagLength: 128 },
     key,
-    shard
+    new Uint8Array(shard)
   );
   const combined = new Uint8Array(iv.length + cipher.byteLength);
   combined.set(iv);
@@ -115,7 +115,7 @@ async function deriveKey(
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt,
+      salt: new Uint8Array(salt),
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },

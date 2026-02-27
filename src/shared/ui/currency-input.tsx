@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { cn } from '@/shared/lib/utils';
 
-export interface CurrencyInputProps extends Omit<React.ComponentProps<'input'>, 'type'> {
+export interface CurrencyInputProps extends Omit<React.ComponentProps<'input'>, 'type' | 'onChange'> {
   /** Value as string (e.g. from useState). */
   value: string;
   /** Called with raw string value (e.g. "1234.56"). */

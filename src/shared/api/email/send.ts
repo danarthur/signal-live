@@ -141,7 +141,7 @@ export async function sendProposalLinkEmail(
     html,
   };
   if (senderOptions?.senderReplyTo?.trim()) {
-    payload.reply_to = [senderOptions.senderReplyTo.trim()];
+    payload.replyTo = [senderOptions.senderReplyTo.trim()];
   }
   const { error } = await resend.emails.send(payload);
   if (error) return { ok: false, error: error.message };

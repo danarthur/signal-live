@@ -47,7 +47,7 @@ export function usePipelineVelocity(): PipelineVelocityData {
 
     if (workspaceId) query = query.eq('workspace_id', workspaceId);
 
-    query
+    void Promise.resolve(query)
       .then(({ data, error: err }) => {
         if (!active) return;
         if (err) {

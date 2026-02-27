@@ -9,7 +9,7 @@ import { IdentityHeader } from './IdentityHeader';
 import { TradeLedger } from './TradeLedger';
 import { PrivateNotes } from './PrivateNotes';
 import { NodeCrewList } from './NodeCrewList';
-import type { NodeDetail } from '@/features/network-data';
+import type { NodeDetail, NodeDetailCrewMember } from '@/features/network-data';
 
 type TabId = 'transmission' | 'crew' | 'ledger';
 

@@ -673,8 +673,8 @@ export function ProposalBuilder({
                           )}
                           <div className="w-14 shrink-0 flex justify-end" onClick={(e) => e.stopPropagation()}>
                             <CurrencyInput
-                              value={effectiveUnitPrice(item)}
-                              onChange={(v) => updateLineItemUnitPrice(index, v)}
+                              value={String(effectiveUnitPrice(item))}
+                              onChange={(v) => updateLineItemUnitPrice(index, Number(v) || 0)}
                               className="text-sm font-semibold text-ink text-right w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1"
                             />
                           </div>

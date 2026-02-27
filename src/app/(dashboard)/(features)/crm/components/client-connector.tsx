@@ -147,22 +147,25 @@ export function ClientConnector({
           </Sheet>
         )}
 
-        <OmniSearch
-          sourceOrgId={sourceOrgId}
-          open={omniOpen}
-          onOpenChange={setOmniOpen}
-          onOpenForge={handleOpenForge}
-          onSelectExisting={async (org) => handleSelectExisting(org.id)}
-        />
-
-        <CreateClientDialog
-          open={forgeOpen}
-          onOpenChange={setForgeOpen}
-          initialName={forgeInitialName}
-          sourceOrgId={sourceOrgId}
-          dealId={dealId}
-          onSuccess={handleForgeSuccess}
-        />
+        {sourceOrgId && (
+          <>
+            <OmniSearch
+              sourceOrgId={sourceOrgId}
+              open={omniOpen}
+              onOpenChange={setOmniOpen}
+              onOpenForge={handleOpenForge}
+              onSelectExisting={async (org) => handleSelectExisting(org.id)}
+            />
+            <CreateClientDialog
+              open={forgeOpen}
+              onOpenChange={setForgeOpen}
+              initialName={forgeInitialName}
+              sourceOrgId={sourceOrgId}
+              dealId={dealId}
+              onSuccess={handleForgeSuccess}
+            />
+          </>
+        )}
       </>
     );
   }

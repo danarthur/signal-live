@@ -35,7 +35,7 @@ export function SignalScoutInput({ value, onChange, onEnrich }: SignalScoutInput
 
     const result = await scoutEntity(value.trim());
 
-    if (result.error) {
+    if ('error' in result) {
       toast.error(result.error, { id: toastId });
       setStatus('ready');
     } else {

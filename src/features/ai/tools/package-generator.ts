@@ -141,7 +141,6 @@ export async function createPackageWithION(
       description: null,
       category: 'package',
       price: (object as { suggestedPrice: number }).suggestedPrice,
-      cost: null,
       definition: (object as { definition: PackageDefinitionGenerated }).definition,
       tagIds: null,
     });

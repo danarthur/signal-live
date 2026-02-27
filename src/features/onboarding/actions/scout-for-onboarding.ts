@@ -31,7 +31,7 @@ export async function scoutCompanyForOnboarding(
 
   const result = await scoutEntityForOnboarding(trimmed);
 
-  if (result.error) {
+  if ('error' in result) {
     return { success: false, error: result.error };
   }
 

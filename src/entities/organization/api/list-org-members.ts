@@ -68,7 +68,7 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberRosterItem
     }
   }
 
-  const rows = (data ?? []) as Row[];
+  const rows = (data ?? []) as unknown as Row[];
   return rows
     .filter((r): r is Row & { entities: NonNullable<Row['entities']> } => r.entity_id != null && r.entities != null)
     .map((r) => {

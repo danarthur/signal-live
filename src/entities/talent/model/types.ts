@@ -1,6 +1,7 @@
 /**
  * Talent entity – Skills-based junction types (Holographic Roster).
  * Aligns with talent_skills + org_members.
+ * talent_skills table not in generated Database type; use local row shapes.
  */
 
 import type { Database } from '@/types/supabase';
@@ -9,9 +10,19 @@ export type EmploymentStatus = Database['public']['Enums']['employment_status'];
 export type SkillLevel = Database['public']['Enums']['skill_level'];
 export type OrgMemberRole = Database['public']['Enums']['org_member_role'];
 
-export type TalentSkillRow = Database['public']['Tables']['talent_skills']['Row'];
-export type TalentSkillInsert = Database['public']['Tables']['talent_skills']['Insert'];
-export type TalentSkillUpdate = Database['public']['Tables']['talent_skills']['Update'];
+export interface TalentSkillRow {
+  id: string;
+  org_member_id: string;
+  skill_tag: string;
+  proficiency?: SkillLevel | null;
+  hourly_rate?: number | null;
+  verified?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export type TalentSkillInsert = Partial<TalentSkillRow> & Pick<TalentSkillRow, 'org_member_id' | 'skill_tag'>;
+export type TalentSkillUpdate = Partial<Omit<TalentSkillRow, 'id'>>;
 
 export type OrgMemberRow = Database['public']['Tables']['org_members']['Row'];
 export type OrgMemberInsert = Database['public']['Tables']['org_members']['Insert'];

@@ -93,7 +93,7 @@ export async function getNetworkStream(orgId: string): Promise<NetworkNode[]> {
 
   const coreNodes: NetworkNode[] = members
     .filter((m) => m.entity_id)
-    .map((m) => {
+    .map((m): NetworkNode => {
       const e = entityMap.get(m.entity_id!);
       const name =
         [m.first_name, m.last_name].filter(Boolean).join(' ') || e?.email || 'Unknown';
@@ -101,7 +101,7 @@ export async function getNetworkStream(orgId: string): Promise<NetworkNode[]> {
       return {
         id: m.id,
         entityId: m.entity_id!,
-        kind: 'internal_employee',
+        kind: 'internal_employee' as const,
         gravity: 'core',
         identity: {
           name,
@@ -122,7 +122,7 @@ export async function getNetworkStream(orgId: string): Promise<NetworkNode[]> {
     });
 
   const innerCircleNodes: NetworkNode[] = rels
-    .map((r) => {
+    .map((r): NetworkNode => {
       const org = orgMap.get(r.target_org_id);
       const typeLabel =
         r.type === 'vendor'
@@ -135,7 +135,7 @@ export async function getNetworkStream(orgId: string): Promise<NetworkNode[]> {
       return {
         id: r.id,
         entityId: r.target_org_id,
-        kind: 'external_partner',
+        kind: 'external_partner' as const,
         gravity: 'inner_circle',
         identity: {
           name: org?.name ?? 'Unknown',
@@ -985,13 +985,14 @@ export async function addContactToGhostOrg(
     .single();
   if (entityErr || !entity?.id) return { ok: false, error: entityErr?.message ?? 'Failed to create contact.' };
 
+  type OrgMemberRole = 'owner' | 'admin' | 'member' | 'restricted';
   const { error: memberErr } = await sys.from('org_members').insert({
     org_id: ghostOrgId,
     entity_id: entity.id,
     workspace_id: ghostOrg.workspace_id,
     first_name: firstName,
     last_name: lastName,
-    role,
+    role: (role as OrgMemberRole) || 'member',
     job_title: jobTitle,
   });
   if (memberErr) {

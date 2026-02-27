@@ -38,7 +38,7 @@ export function useNextGig(): { gig: NextGig | null; loading: boolean; error: st
 
     if (workspaceId) query = query.eq('workspace_id', workspaceId);
 
-    query
+    void Promise.resolve(query)
       .then(({ data, error: err }) => {
         if (!active) return;
         if (err) {

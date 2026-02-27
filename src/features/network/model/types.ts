@@ -45,6 +45,6 @@ export interface NetworkGraph {
   entities: (NetworkEntity & { organization_names: string[]; skill_tags?: string[]; org_member_id?: string | null })[];
 }
 
-export interface ValidateInvitationResult =
+export type ValidateInvitationResult =
   | { ok: true; email: string; org_name: string; organization_id: string }
   | { ok: false; error: string };

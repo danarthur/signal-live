@@ -57,18 +57,18 @@ export default async function DealDetailPage({
                 {r.proposed_date ? new Date(r.proposed_date as string).toLocaleDateString() : '—'}
               </dd>
             </div>
-            {r.event_archetype && (
+            {r.event_archetype != null ? (
               <div>
                 <dt className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Event type</dt>
                 <dd className="text-ceramic">{String(r.event_archetype).replace(/_/g, ' ')}</dd>
               </div>
-            )}
-            {r.notes && (
+            ) : null}
+            {r.notes != null && r.notes !== '' ? (
               <div>
                 <dt className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Notes</dt>
-                <dd className="text-mercury whitespace-pre-wrap">{r.notes as string}</dd>
+                <dd className="text-mercury whitespace-pre-wrap">{String(r.notes)}</dd>
               </div>
-            )}
+            ) : null}
             {r.budget_estimated != null && (
               <div>
                 <dt className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Budget (est.)</dt>

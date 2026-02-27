@@ -104,12 +104,14 @@ export async function getPublicProposal(token: string): Promise<PublicProposalDT
   const startsAt = eventRow?.starts_at ?? (deal.proposed_date ? `${deal.proposed_date}T08:00:00.000Z` : null);
   const eventIdForReturn = eventRow?.id ?? deal.event_id ?? dealId;
 
-  // 3. Workspace (logo, name) – optional so missing workspace doesn't hide the proposal
-  const { data: workspace } = await supabase
+  // 3. Workspace (logo, name) – optional; logo_url may not be in generated workspaces type
+  type WorkspaceRow = { id: string; name?: string; logo_url?: string | null };
+  const { data: workspaceData } = await (supabase as any)
     .from('workspaces')
     .select('id, name, logo_url')
     .eq('id', workspaceId)
     .maybeSingle();
+  const workspace = workspaceData as WorkspaceRow | null;
 
   // 4. Proposal items (with package image_url where package_id is set)
   const { data: items, error: itemsError } = await supabase
@@ -155,7 +157,7 @@ export async function getPublicProposal(token: string): Promise<PublicProposalDT
       startsAt,
     },
     workspace: workspace
-      ? { id: workspace.id, name: (workspace as { name?: string }).name ?? '', logoUrl: (workspace as { logo_url?: string | null }).logo_url ?? null }
+      ? { id: workspace.id, name: workspace.name ?? '', logoUrl: workspace.logo_url ?? null }
       : { id: workspaceId ?? '', name: 'Signal', logoUrl: null },
     items: itemsWithImages,
     total,

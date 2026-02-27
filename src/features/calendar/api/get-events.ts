@@ -97,7 +97,7 @@ export async function getCalendarEvents(
     }
 
     const result: CalendarEvent[] = (eventRowsRaw ?? [])
-      .map((r) => toCalendarEvent(r as OpsEventsRow))
+      .map((r) => toCalendarEvent(r as unknown as OpsEventsRow))
       .filter((e): e is CalendarEvent => e !== null);
 
     result.sort((a, b) => a.start.localeCompare(b.start));

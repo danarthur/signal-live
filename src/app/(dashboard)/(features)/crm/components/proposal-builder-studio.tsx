@@ -65,10 +65,10 @@ export function ProposalBuilderStudio({ deal, contacts = [], clientAttached: cli
   /** Proposal with optimistic items so receipt updates immediately on drop. */
   const displayProposal: ProposalWithItems | null =
     initialProposal != null
-      ? {
+      ? ({
           ...initialProposal,
           items: [...(initialProposal.items ?? []), ...optimisticItems],
-        }
+        } as ProposalWithItems)
       : optimisticItems.length > 0
         ? ({
             id: null,
@@ -79,7 +79,7 @@ export function ProposalBuilderStudio({ deal, contacts = [], clientAttached: cli
             created_at: '',
             updated_at: '',
             items: optimisticItems,
-          } as ProposalWithItems)
+          } as unknown as ProposalWithItems)
         : null;
 
   const refetchProposal = useCallback(() => {

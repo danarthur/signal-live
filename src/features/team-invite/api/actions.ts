@@ -175,11 +175,12 @@ export async function upsertGhostMember(
     if (!entityId) return { ok: false, error: 'Invalid member.' };
 
     await supabase.from('entities').update({ email: emailTrim }).eq('id', entityId);
-    const updatePayload: { first_name: string; last_name: string; job_title: string | null; role: string; avatar_url?: string | null } = {
+    type OrgMemberRole = 'admin' | 'member' | 'owner' | 'restricted';
+    const updatePayload: { first_name: string; last_name: string; job_title: string | null; role: OrgMemberRole; avatar_url?: string | null } = {
       first_name,
       last_name,
       job_title: job_title?.trim() || null,
-      role,
+      role: (role === 'manager' ? 'member' : role) as OrgMemberRole,
     };
     if (inputAvatarUrl !== undefined) updatePayload.avatar_url = inputAvatarUrl || null;
     const { error: memberErr } = await supabase
@@ -197,7 +198,7 @@ export async function upsertGhostMember(
         name,
         first_name,
         last_name,
-        role,
+        role: (role === 'manager' ? 'member' : role) as 'admin' | 'member' | 'owner' | 'restricted',
         email: emailTrim,
         job_title: job_title?.trim() || null,
         avatarUrl: inputAvatarUrl ?? null,
@@ -206,13 +207,14 @@ export async function upsertGhostMember(
     };
   }
 
+  type OrgMemberRole = 'admin' | 'member' | 'owner' | 'restricted';
   const { data: rpcResult, error: rpcErr } = await supabase.rpc('add_ghost_member', {
     p_org_id: orgId,
     p_workspace_id: workspaceId,
     p_first_name: first_name,
     p_last_name: last_name,
     p_email: emailTrim,
-    p_role: role,
+    p_role: (role === 'manager' ? 'member' : role) as OrgMemberRole,
     p_job_title: job_title?.trim() || null,
   });
 
@@ -237,7 +239,7 @@ export async function upsertGhostMember(
       name,
       first_name: result.first_name ?? first_name,
       last_name: result.last_name ?? last_name,
-      role: result.role ?? role,
+      role: (result.role ?? role) as 'admin' | 'member' | 'owner' | 'restricted',
       email: result.email ?? emailTrim,
       job_title: result.job_title ?? job_title?.trim() ?? null,
       avatarUrl: inputAvatarUrl ?? null,

@@ -102,7 +102,11 @@ export default function CatalogPage() {
 
   const allTags = useMemo(() => {
     const seen = new Map<string, WorkspaceTag>();
-    packages.forEach((p) => (p.tags ?? []).forEach((t) => seen.set(t.id, t)));
+    packages.forEach((p) =>
+      (p.tags ?? []).forEach((t) =>
+        seen.set(t.id, { ...t, workspace_id: p.workspace_id })
+      )
+    );
     return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [packages]);
 
@@ -179,7 +183,9 @@ export default function CatalogPage() {
     setPrice(String(Number(pkg.price)));
     setFloorPrice(pkg.floor_price != null ? String(Number(pkg.floor_price)) : '');
     setTargetCost(pkg.target_cost != null ? String(Number(pkg.target_cost)) : '');
-    setSelectedTags(pkg.tags ?? []);
+    setSelectedTags(
+      (pkg.tags ?? []).map((t) => ({ ...t, workspace_id: pkg.workspace_id }))
+    );
     const row = pkg as PackageWithTags & { stock_quantity?: number; is_sub_rental?: boolean; replacement_cost?: number | null; buffer_days?: number };
     if ((pkg.category as string) === 'rental') {
       setStockQuantity(row.stock_quantity != null ? String(row.stock_quantity) : '');
@@ -855,7 +861,14 @@ export default function CatalogPage() {
                 id="cat-tags"
                 workspaceId={workspaceId}
                 value={selectedTags}
-                onChange={setSelectedTags}
+                onChange={(tags) =>
+                  setSelectedTags(
+                    tags.map((t) => ({
+                      ...t,
+                      workspace_id: t.workspace_id ?? workspaceId ?? '',
+                    }))
+                  )
+                }
                 getWorkspaceTags={getWorkspaceTags}
                 createWorkspaceTag={createWorkspaceTag}
                 placeholder="Type to search or create…"

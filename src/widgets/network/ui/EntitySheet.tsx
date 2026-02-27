@@ -73,7 +73,7 @@ export function EntitySheet({ subject, open, onOpenChange }: EntitySheetProps) {
 
   const isOrg = subject?.type === 'org';
   const org = isOrg ? (subject as { type: 'org'; data: NetworkOrganization }).data : null;
-  const entity = !isOrg && subject ? (subject as { type: 'entity'; data: NetworkEntity }).data : null;
+  const entity = !isOrg && subject ? (subject as { type: 'entity'; data: NetworkEntity & { organization_names?: string[] } }).data : null;
 
   const [optimisticNotes, setOptimisticNotes] = useOptimistic(
     org?.private_notes ?? '',

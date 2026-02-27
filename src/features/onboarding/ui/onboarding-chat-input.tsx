@@ -69,7 +69,6 @@ export function OnboardingChatInput({
           type={type}
           value={value}
           onChange={onChange}
-          onInput={onChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || isLoading}

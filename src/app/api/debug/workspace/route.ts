@@ -39,15 +39,15 @@ export async function GET() {
 
     const myWorkspaceIds = new Set((memberships ?? []).map((m) => m.workspace_id as string));
 
-    // 1. What we SEE: counts in active workspace (RLS applies) – unified events only
-    const eventsInActiveRes = await supabase
+    // 1. What we SEE: counts in active workspace (RLS applies) – unified events only (legacy public.events)
+    const eventsInActiveRes = await (supabase as any)
       .from('events')
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', activeWorkspaceId ?? '');
 
-    // 2. Ghost Data: events in workspaces we're NOT a member of
+    // 2. Ghost Data: events in workspaces we're NOT a member of (legacy public.events)
     const system = getSystemClient();
-    const { data: eventsByWorkspace } = await system.from('events').select('workspace_id');
+    const { data: eventsByWorkspace } = await (system as any).from('events').select('workspace_id');
 
     const eventWorkspaceCounts: Record<string, number> = {};
     for (const e of eventsByWorkspace ?? []) {
@@ -62,8 +62,8 @@ export async function GET() {
       .reduce((s, wid) => s + (eventWorkspaceCounts[wid] ?? 0), 0);
     const drift = ghostEventsCount > 0 || otherEventsCount > 0;
 
-    // Sample rows in active workspace
-    const { data: eventRows } = await supabase
+    // Sample rows in active workspace (legacy public.events)
+    const { data: eventRows } = await (supabase as any)
       .from('events')
       .select('id, title, workspace_id, starts_at')
       .eq('workspace_id', activeWorkspaceId ?? '')

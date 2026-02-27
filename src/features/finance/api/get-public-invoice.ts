@@ -17,9 +17,11 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoiceDTO 
   if (!token?.trim()) return null;
 
   const supabase = getSystemClient();
+  // finance.invoices / invoice_items not in generated public types
+  const db = supabase as any;
 
   // 1. Invoice by token
-  const { data: invoice, error: invError } = await supabase
+  const { data: invoice, error: invError } = await db
     .from('invoices')
     .select('id, invoice_number, status, total_amount, token, issue_date, due_date, event_id, workspace_id')
     .eq('token', token.trim())
@@ -32,7 +34,7 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoiceDTO 
   const workspaceId = invoice.workspace_id;
 
   // 2. Invoice items (sorted by sort_order)
-  const { data: itemRows, error: itemsError } = await supabase
+  const { data: itemRows, error: itemsError } = await db
     .from('invoice_items')
     .select('id, invoice_id, description, quantity, unit_price, amount, sort_order')
     .eq('invoice_id', invoiceId)
@@ -40,7 +42,8 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoiceDTO 
 
   if (itemsError) return null;
 
-  const items: PublicInvoiceItemDTO[] = (itemRows ?? []).map((row) => ({
+  type InvoiceItemRow = { id: string; invoice_id: string; description: string | null; quantity: number | null; unit_price: number | null; amount: number | null; sort_order: number | null };
+  const items: PublicInvoiceItemDTO[] = (itemRows ?? []).map((row: InvoiceItemRow) => ({
     id: row.id,
     invoice_id: row.invoice_id,
     description: row.description,
@@ -51,7 +54,7 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoiceDTO 
   }));
 
   // 3. Workspace (name, logo)
-  const { data: workspace, error: workspaceError } = await supabase
+  const { data: workspace, error: workspaceError } = await db
     .from('workspaces')
     .select('id, name, logo_url')
     .eq('id', workspaceId)
@@ -59,8 +62,8 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoiceDTO 
 
   if (workspaceError || !workspace) return null;
 
-  // 4. Event (title, starts_at)
-  const { data: event, error: eventError } = await supabase
+  // 4. Event (title, starts_at) — legacy public.events
+  const { data: event, error: eventError } = await db
     .from('events')
     .select('id, title, starts_at')
     .eq('id', eventId)
@@ -69,13 +72,13 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoiceDTO 
   if (eventError || !event) return null;
 
   // 5. Payments (to compute amountPaid)
-  const { data: paymentRows } = await supabase
+  const { data: paymentRows } = await db
     .from('payments')
     .select('amount')
     .eq('invoice_id', invoiceId)
     .eq('status', 'succeeded');
 
-  const amountPaid = (paymentRows ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const amountPaid = (paymentRows ?? []).reduce((sum: number, p: { amount: unknown }) => sum + Number(p.amount), 0);
   const totalAmount = Number(invoice.total_amount);
   const balanceDue = Math.max(0, totalAmount - amountPaid);
 

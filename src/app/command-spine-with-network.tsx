@@ -12,7 +12,8 @@ export function CommandSpineWithNetwork() {
     <ConditionalCommandSpine
       network={{
         searchNetworkOrgs: async (orgId, query) => searchNetworkOrgs(orgId, query),
-        summonPartner: async (orgId, partnerId, role) => summonPartner(orgId, partnerId, role),
+        summonPartner: async (orgId, partnerId, role) =>
+          summonPartner(orgId, partnerId, role as 'vendor' | 'venue' | 'client' | 'partner'),
       }}
     />
   );

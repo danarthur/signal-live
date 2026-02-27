@@ -16,7 +16,7 @@ const listVariants = {
 
 const itemVariants = {
   hidden: { y: 8, opacity: 1 },
-  visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } },
+  visible: { y: 0, opacity: 1, transition: { type: 'spring' as const, stiffness: 300, damping: 30 } },
 };
 import type { NodeDetailCrewMember } from '@/features/network-data';
 

@@ -526,7 +526,7 @@ export function EntityStudioClient({ details, sourceOrgId }: EntityStudioClientP
                 <label className={LABEL}>Relationship role</label>
                 <select
                   value={relType}
-                  onChange={(e) => { setRelType(e.target.value); markChanged(); }}
+                  onChange={(e) => { setRelType(e.target.value as 'vendor' | 'partner' | 'client'); markChanged(); }}
                   className="mt-1 w-full rounded-lg bg-white/5 border border-[var(--color-mercury)] px-3 py-2 text-sm text-[var(--color-ink)]"
                 >
                   <option value="vendor">Vendor</option>
@@ -538,7 +538,7 @@ export function EntityStudioClient({ details, sourceOrgId }: EntityStudioClientP
                 <label className={LABEL}>Lifecycle</label>
                 <select
                   value={lifecycle}
-                  onChange={(e) => { setLifecycle(e.target.value); markChanged(); }}
+                  onChange={(e) => { setLifecycle(e.target.value as 'prospect' | 'active' | 'dormant' | 'blacklisted'); markChanged(); }}
                   className="mt-1 w-full rounded-lg bg-white/5 border border-[var(--color-mercury)] px-3 py-2 text-sm text-[var(--color-ink)]"
                 >
                   <option value="prospect">Prospect</option>

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuthenticationResponse } from '@simplewebauthn/server';
+import { verifyAuthenticationResponse, type AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { getSystemClient } from '@/shared/api/supabase/system';
 import { cookies } from 'next/headers';
 
@@ -121,7 +121,11 @@ export async function POST(request: NextRequest) {
         id: passkeyRow.credential_id,
         publicKey: new Uint8Array(publicKeyBytes),
         counter: passkeyRow.counter ?? 0,
-        transports: (passkeyRow.transports as (string | undefined)[]) ?? undefined,
+        transports: (() => {
+          const raw = (passkeyRow.transports as (string | undefined)[] | null) ?? [];
+          const filtered = raw.filter((t): t is string => t != null) as AuthenticatorTransportFuture[];
+          return filtered.length > 0 ? filtered : undefined;
+        })(),
       },
     });
 
