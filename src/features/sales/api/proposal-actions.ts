@@ -12,6 +12,15 @@ import { sendProposalLinkEmail } from '@/shared/api/email/send';
 import type { Package } from '@/types/supabase';
 import type { ProposalWithItems } from '../model/types';
 
+/** Base URL for public links (proposal, claim, etc.). Prefer NEXT_PUBLIC_APP_URL; on Vercel fall back to VERCEL_URL so links in emails are always absolute. */
+function getPublicBaseUrl(): string {
+  const app = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (app) return app.replace(/\/$/, '');
+  const vercel = process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel}`;
+  return '';
+}
+
 /** Minimal shape for package definition.blocks when expanding to line items. */
 type DefinitionBlock =
   | { type: 'line_item'; catalogId: string; quantity: number }
@@ -119,7 +128,7 @@ export async function getProposalPublicUrl(dealId: string): Promise<string | nul
     .maybeSingle();
   const token = (row as { public_token?: string } | null)?.public_token;
   if (!token?.trim()) return null;
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const base = getPublicBaseUrl();
   return base ? `${base}/p/${token}` : `/p/${token}`;
 }
 
@@ -631,7 +640,7 @@ export async function publishProposal(proposalId: string): Promise<PublishPropos
   }
 
   const token = (data?.public_token as string) ?? publicToken;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const baseUrl = getPublicBaseUrl();
   const publicUrl = baseUrl ? `${baseUrl}/p/${token}` : `/p/${token}`;
 
   return { publicToken: token, publicUrl };

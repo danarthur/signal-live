@@ -910,7 +910,9 @@ export function ProposalBuilder({
                       {sendEmailResult != null && (
                         <p className="text-sm text-ink-muted" role="status">
                           {sendEmailResult.notConfigured
-                            ? 'Add RESEND_API_KEY to .env.local to send from the app. Until then, use Open in email to send the link.'
+                            ? typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location?.hostname ?? '')
+                              ? 'Add RESEND_API_KEY in Vercel (Settings → Environment Variables) for Production, then redeploy. Until then, use Open in email to send the link.'
+                              : 'Add RESEND_API_KEY to .env.local to send from the app. Until then, use Open in email to send the link.'
                             : sendEmailResult.sent > 0
                               ? `Email sent to ${sendEmailResult.sent} recipient${sendEmailResult.sent === 1 ? '' : 's'}.`
                               : sendEmailResult.failed > 0 && sendEmailResult.firstError
