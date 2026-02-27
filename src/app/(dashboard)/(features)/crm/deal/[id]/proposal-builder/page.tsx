@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDeal } from '../../../actions/get-deal';
 import { getDealStakeholders } from '../../../actions/deal-stakeholders';
@@ -28,14 +27,14 @@ export default async function DealProposalBuilderPage({
 
   return (
     <div className="flex flex-col h-full min-h-[80vh] relative">
-      <header className="relative z-10 shrink-0 flex items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 border-b border-white/10 backdrop-blur-xl bg-[var(--color-glass-surface)]">
-        <Link
+      <header className="relative z-20 shrink-0 flex items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 border-b border-white/10 backdrop-blur-xl bg-[var(--color-glass-surface)]">
+        <a
           href={`/crm?selected=${dealId}`}
           className="p-2 -ml-2 rounded-xl text-ink-muted hover:text-ink hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
           aria-label="Back to deal"
         >
           <ArrowLeft size={20} />
-        </Link>
+        </a>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-widest text-ink-muted">
             Proposal builder

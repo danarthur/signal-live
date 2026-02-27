@@ -6,6 +6,7 @@
 
 import 'server-only';
 import { createClient } from '@/shared/api/supabase/server';
+import { canAccessDealFinancials } from '@/shared/lib/permissions';
 import type {
   GigFinancialsDTO,
   InvoiceDTO,
@@ -137,12 +138,17 @@ export async function getFinancials(
     progressPercentage,
   };
 
-  // 7. Proposals for this event (via deal): accepted/sent for "Generate from Proposal"
+  // 7. Deal for this event (for stakeholder override and proposals)
   const { data: dealRow } = await supabase
     .from('deals')
-    .select('id')
+    .select('id, workspace_id')
     .eq('event_id', eventId)
     .maybeSingle();
+
+  if (dealRow?.id && dealRow?.workspace_id) {
+    const allowed = await canAccessDealFinancials(dealRow.workspace_id, dealRow.id);
+    if (!allowed) return null;
+  }
 
   const { data: proposals } = dealRow?.id
     ? await supabase

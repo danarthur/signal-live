@@ -30,6 +30,8 @@ async function assertCanManageOrgMember(supabase: Awaited<ReturnType<typeof crea
   return null;
 }
 
+type OrgMemberRoleDb = 'owner' | 'admin' | 'member' | 'restricted';
+
 export async function updateMemberIdentity(input: UpdateMemberIdentityInput): Promise<MemberActionResult> {
   const parsed = updateMemberIdentitySchema.safeParse(input);
   if (!parsed.success) {
@@ -45,14 +47,50 @@ export async function updateMemberIdentity(input: UpdateMemberIdentityInput): Pr
   const err = await assertCanManageOrgMember(supabase, member.org_id);
   if (err) return err;
 
+  const updatePayload: {
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    job_title: string | null;
+    role?: OrgMemberRoleDb;
+  } = {
+    first_name: parsed.data.first_name ?? null,
+    last_name: parsed.data.last_name ?? null,
+    phone: parsed.data.phone ?? null,
+    job_title: parsed.data.job_title ?? null,
+  };
+
+  if (parsed.data.role !== undefined) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: 'Not signed in.' };
+    const { data: currentEntity } = await supabase
+      .from('entities')
+      .select('id')
+      .eq('auth_id', user.id)
+      .maybeSingle();
+    if (currentEntity) {
+      const { data: currentMember } = await supabase
+        .from('org_members')
+        .select('role')
+        .eq('org_id', member.org_id)
+        .eq('entity_id', currentEntity.id)
+        .maybeSingle();
+      const currentRole = (currentMember?.role as OrgMemberRoleDb | null) ?? null;
+      const newRole = parsed.data.role === 'manager' ? 'member' : parsed.data.role;
+      const dbRole = newRole as OrgMemberRoleDb;
+      if (newRole === 'owner' && currentRole !== 'owner') {
+        return { ok: false, error: 'Only the owner can assign the owner role.' };
+      }
+      if (['admin', 'member'].includes(newRole) && currentRole !== 'owner' && currentRole !== 'admin') {
+        return { ok: false, error: 'Only owners and admins can change roles.' };
+      }
+      updatePayload.role = dbRole;
+    }
+  }
+
   const { error } = await supabase
     .from('org_members')
-    .update({
-      first_name: parsed.data.first_name ?? null,
-      last_name: parsed.data.last_name ?? null,
-      phone: parsed.data.phone ?? null,
-      job_title: parsed.data.job_title ?? null,
-    })
+    .update(updatePayload)
     .eq('id', parsed.data.org_member_id);
 
   if (error) return { ok: false, error: error.message };

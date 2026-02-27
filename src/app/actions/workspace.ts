@@ -7,7 +7,18 @@
 'use server';
 
 import { createClient } from '@/shared/api/supabase/server';
+import { getSystemClient } from '@/shared/api/supabase/system';
 import { revalidatePath } from 'next/cache';
+import { getCurrentOrgId } from '@/features/network/api/actions';
+import { getOrgDetails } from '@/features/org-management/api';
+import {
+  inviteTeamMemberPayloadSchema,
+  type InviteTeamMemberPayload,
+} from '@/app/actions/invite-team-member-schema';
+import {
+  offboardTeamMemberPayloadSchema,
+  type OffboardTeamMemberPayload,
+} from '@/app/actions/offboard-team-member-schema';
 
 // ============================================================================
 // Types
@@ -303,6 +314,96 @@ export async function updateMemberDepartment(
   return { success: true };
 }
 
+/**
+ * Updates a member's workspace role (role_id). Requires manage_team or owner/admin.
+ * Cannot change the owner's role. roleId must be a system role or a custom role for this workspace.
+ */
+export async function updateMemberRole(
+  workspaceId: string,
+  memberId: string,
+  roleId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+
+  const { data: currentMember } = await supabase
+    .from('workspace_members')
+    .select('role, permissions')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (!currentMember) {
+    return { success: false, error: 'Not a member of this workspace' };
+  }
+
+  const canManage =
+    currentMember.role === 'owner' ||
+    currentMember.role === 'admin' ||
+    (currentMember.permissions as WorkspacePermissions)?.manage_team;
+
+  if (!canManage) {
+    return { success: false, error: 'Insufficient permissions' };
+  }
+
+  const { data: targetMember } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('id', memberId)
+    .eq('workspace_id', workspaceId)
+    .single();
+
+  if (!targetMember) {
+    return { success: false, error: 'Member not found' };
+  }
+
+  if (targetMember.role === 'owner') {
+    const { count, error: countErr } = await supabase
+      .from('workspace_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('role', 'owner');
+    if (countErr || (count ?? 0) <= 1) {
+      return { success: false, error: 'Cannot remove the last Owner. Assign another member as Owner first.' };
+    }
+  }
+
+  const { data: roleRow } = await supabase
+    .from('workspace_roles')
+    .select('id, slug')
+    .eq('id', roleId)
+    .or(`workspace_id.is.null,workspace_id.eq.${workspaceId}`)
+    .single();
+
+  if (!roleRow) {
+    return { success: false, error: 'Invalid role' };
+  }
+
+  const systemSlugToLegacy: Record<string, 'owner' | 'admin' | 'member' | 'viewer'> = {
+    owner: 'owner',
+    admin: 'admin',
+    member: 'member',
+    observer: 'viewer',
+  };
+  const legacyRole = systemSlugToLegacy[roleRow.slug] ?? 'member';
+  const { error } = await supabase
+    .from('workspace_members')
+    .update({ role_id: roleId, role: legacyRole })
+    .eq('id', memberId)
+    .eq('workspace_id', workspaceId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/settings');
+  return { success: true };
+}
+
 // ============================================================================
 // Get Workspace Members
 // ============================================================================
@@ -313,7 +414,11 @@ export interface WorkspaceMemberData {
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
+  /** Legacy text role (owner | admin | member | viewer) for display/fallback. */
   role: 'owner' | 'admin' | 'member' | 'viewer';
+  /** Resolved role from workspace_roles when role_id is set. */
+  roleId: string | null;
+  roleName: string | null;
   department: string | null;
   permissions: WorkspacePermissions;
   primaryLocationId: string | null;
@@ -334,6 +439,7 @@ export async function getWorkspaceMembers(
       id,
       user_id,
       role,
+      role_id,
       department,
       permissions,
       primary_location_id,
@@ -342,19 +448,27 @@ export async function getWorkspaceMembers(
         email,
         full_name,
         avatar_url
+      ),
+      workspace_roles:role_id (
+        id,
+        name,
+        slug
       )
     `)
     .eq('workspace_id', workspaceId)
     .order('role')
     .order('created_at', { ascending: true });
-  
+
   if (error) {
     return { success: false, error: error.message };
   }
-  
+
   const formattedMembers: WorkspaceMemberData[] = members.map((m) => {
     const rawProfile = m.profiles;
     const profile = (Array.isArray(rawProfile) ? rawProfile[0] : rawProfile) as { email: string; full_name: string | null; avatar_url: string | null } | null;
+    const rawRole = m.workspace_roles;
+    const roleRow = Array.isArray(rawRole) ? rawRole[0] : rawRole;
+    const roleName = roleRow && typeof roleRow === 'object' && roleRow !== null && 'name' in roleRow ? (roleRow as { name: string }).name : null;
     return {
       id: m.id,
       userId: m.user_id,
@@ -362,6 +476,8 @@ export async function getWorkspaceMembers(
       fullName: profile?.full_name || null,
       avatarUrl: profile?.avatar_url || null,
       role: m.role as 'owner' | 'admin' | 'member' | 'viewer',
+      roleId: m.role_id ?? null,
+      roleName,
       department: m.department,
       permissions: m.permissions as WorkspacePermissions,
       primaryLocationId: m.primary_location_id,
@@ -370,6 +486,377 @@ export async function getWorkspaceMembers(
   });
   
   return { success: true, members: formattedMembers };
+}
+
+/**
+ * Resolve an org member (roster person) to a workspace member so we can show/edit workspace role.
+ * Used by Network MemberDetailSheet: if this person is in the workspace, show WorkspaceRoleSelect (system + custom roles).
+ */
+export async function getWorkspaceMemberByOrgMemberId(
+  orgMemberId: string,
+  workspaceId: string
+): Promise<{ workspaceMemberId: string; roleId: string | null } | null> {
+  const supabase = await createClient();
+  const { data: orgMember } = await supabase
+    .from('org_members')
+    .select('profile_id, entity_id')
+    .eq('id', orgMemberId)
+    .single();
+  if (!orgMember) return null;
+
+  let userId: string | null = orgMember.profile_id ?? null;
+  if (!userId && orgMember.entity_id) {
+    const [publicEnt, dirEnt] = await Promise.all([
+      supabase.from('entities').select('auth_id').eq('id', orgMember.entity_id).maybeSingle(),
+      supabase.schema('directory').from('entities').select('claimed_by_user_id').eq('id', orgMember.entity_id).maybeSingle(),
+    ]);
+    userId = publicEnt.data?.auth_id ?? dirEnt.data?.claimed_by_user_id ?? null;
+  }
+  if (!userId) return null;
+
+  const { data: wm } = await supabase
+    .from('workspace_members')
+    .select('id, role_id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!wm) return null;
+
+  return { workspaceMemberId: wm.id, roleId: wm.role_id ?? null };
+}
+
+// ============================================================================
+// Offboard Team Member (surgical removal: revoke access ± roster)
+// ============================================================================
+
+export type OffboardTeamMemberResult =
+  | { success: true; message: string }
+  | { success: false; error: string };
+
+/**
+ * Offboard a team member: revoke workspace access and optionally remove from roster.
+ * Directory-centric: we never delete directory.entities or deal_stakeholders; we only remove
+ * workspace_members and (if full_offboard) org_members for the current org.
+ *
+ * Step 1 (Safeguard): If this user is the last owner in the workspace, abort.
+ * Step 2: Delete from workspace_members (revokes login and RLS).
+ * Step 3: If revoke_login_only, leave org_members and entities intact. If full_offboard, remove
+ * their org_members row(s) for the org linked to this workspace; entities and deal_stakeholders are preserved.
+ */
+export async function offboardTeamMember(
+  payload: OffboardTeamMemberPayload
+): Promise<OffboardTeamMemberResult> {
+  const parsed = offboardTeamMemberPayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return { success: false, error: first?.message ?? 'Invalid input.' };
+  }
+
+  const { user_id: targetUserId, workspace_id: workspaceId, intent } = parsed.data;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Not authenticated.' };
+
+  const { data: currentMember } = await supabase
+    .from('workspace_members')
+    .select('role, permissions')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const canManage =
+    currentMember?.role === 'owner' ||
+    currentMember?.role === 'admin' ||
+    (currentMember?.permissions as WorkspacePermissions)?.manage_team;
+  if (!currentMember || !canManage) {
+    return { success: false, error: 'You do not have permission to offboard members in this workspace.' };
+  }
+
+  if (targetUserId === user.id) {
+    return { success: false, error: 'You cannot offboard yourself. Ask another owner or admin to remove you.' };
+  }
+
+  const { data: targetRow } = await supabase
+    .from('workspace_members')
+    .select('id, role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', targetUserId)
+    .maybeSingle();
+
+  if (!targetRow) {
+    return { success: false, error: 'This person is not a member of this workspace.' };
+  }
+
+  // Step 1 (Safeguard): Do not remove the last owner.
+  const isOwner = targetRow.role === 'owner';
+  if (isOwner) {
+    const { count, error: countErr } = await supabase
+      .from('workspace_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('role', 'owner');
+    if (countErr || (count ?? 0) <= 1) {
+      return {
+        success: false,
+        error: 'Cannot remove the last Owner. Assign another member as Owner first.',
+      };
+    }
+  }
+
+  // Step 2: Revoke software access — delete from workspace_members.
+  const { error: deleteWmErr } = await supabase
+    .from('workspace_members')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', targetUserId);
+
+  if (deleteWmErr) {
+    return { success: false, error: deleteWmErr.message ?? 'Failed to revoke access.' };
+  }
+
+  // Step 3: Roster management (only for full_offboard).
+  if (intent === 'full_offboard') {
+    // Resolve user_id → entity_id (public.entities or directory.entities).
+    let entityId: string | null = null;
+    const { data: publicEnt } = await supabase
+      .from('entities')
+      .select('id')
+      .eq('auth_id', targetUserId)
+      .maybeSingle();
+    if (publicEnt?.id) {
+      entityId = publicEnt.id;
+    }
+    if (!entityId) {
+      const { data: dirEnt } = await supabase
+        .schema('directory')
+        .from('entities')
+        .select('id')
+        .eq('claimed_by_user_id', targetUserId)
+        .maybeSingle();
+      if (dirEnt?.id) entityId = dirEnt.id;
+    }
+
+    if (entityId) {
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('workspace_id', workspaceId);
+      const orgIds = (orgs ?? []).map((o) => o.id);
+      if (orgIds.length > 0) {
+        await supabase
+          .from('org_members')
+          .delete()
+          .in('org_id', orgIds)
+          .eq('entity_id', entityId);
+      }
+    }
+    // We do NOT delete public.entities, directory.entities, or deal_stakeholders — history is preserved.
+  }
+
+  revalidatePath('/settings');
+  revalidatePath('/settings/team');
+  revalidatePath('/network');
+
+  if (intent === 'revoke_login_only') {
+    return { success: true, message: 'App access revoked. They remain on your roster.' };
+  }
+  return { success: true, message: 'Member offboarded. App access revoked and removed from active roster. Past event data is preserved.' };
+}
+
+// ============================================================================
+// Invite Team Member (dual-write: roster + optional workspace access)
+// ============================================================================
+
+export type InviteTeamMemberResult =
+  | { success: true; message: string }
+  | { success: false; error: string };
+
+/** DB org_member_role: owner, admin, member, restricted (no manager; map manager → member). */
+const INTERNAL_ROLE_TO_DB: Record<string, 'owner' | 'admin' | 'member' | 'restricted'> = {
+  owner: 'owner',
+  admin: 'admin',
+  manager: 'member',
+  member: 'member',
+  restricted: 'restricted',
+};
+
+const WORKSPACE_ROLE_SLUG_TO_LEGACY: Record<string, 'owner' | 'admin' | 'member' | 'viewer'> = {
+  owner: 'owner',
+  admin: 'admin',
+  member: 'member',
+  observer: 'viewer',
+};
+
+/**
+ * Invite a team member: add to roster (org_members) and optionally grant Signal login (Auth invite + workspace_members).
+ * Roster and software access are decoupled; grant_workspace_access controls whether we send an Auth invite and add workspace_members.
+ * If Step 2 (Auth invite or workspace_members insert) fails, Step 1 (roster) is rolled back.
+ */
+export async function inviteTeamMember(
+  payload: InviteTeamMemberPayload
+): Promise<InviteTeamMemberResult> {
+  const parsed = inviteTeamMemberPayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return { success: false, error: first?.message ?? 'Invalid input.' };
+  }
+
+  const {
+    workspace_id: workspaceId,
+    first_name,
+    last_name,
+    email,
+    internal_role,
+    job_title,
+    grant_workspace_access,
+    workspace_role_id,
+  } = parsed.data;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Not authenticated.' };
+
+  const orgId = await getCurrentOrgId();
+  if (!orgId) return { success: false, error: 'No organization selected. Open Network or Settings to pick one.' };
+
+  const org = await getOrgDetails(orgId);
+  if (!org?.workspace_id) return { success: false, error: 'Organization not found or not linked to a workspace.' };
+  if (org.workspace_id !== workspaceId) {
+    return { success: false, error: 'This workspace does not match your organization. Use the correct workspace.' };
+  }
+
+  const { data: currentMember } = await supabase
+    .from('workspace_members')
+    .select('role, permissions')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const canManage =
+    currentMember?.role === 'owner' ||
+    currentMember?.role === 'admin' ||
+    (currentMember?.permissions as WorkspacePermissions)?.manage_team;
+  if (!currentMember || !canManage) {
+    return { success: false, error: 'You do not have permission to invite team members to this workspace.' };
+  }
+
+  const dbRole = INTERNAL_ROLE_TO_DB[internal_role] ?? 'member';
+
+  // Step 1: Roster — entity + org_member (via add_ghost_member RPC)
+  const { data: rpcResult, error: rpcErr } = await supabase.rpc('add_ghost_member', {
+    p_org_id: orgId,
+    p_workspace_id: workspaceId,
+    p_first_name: first_name.trim(),
+    p_last_name: last_name.trim(),
+    p_email: email.trim(),
+    p_role: dbRole,
+    p_job_title: job_title?.trim() || null,
+  });
+
+  if (rpcErr) {
+    const msg = rpcErr.message ?? 'Failed to add to roster.';
+    if (rpcErr.code === '23505' || msg.toLowerCase().includes('unique')) {
+      return { success: false, error: 'This email is already on the roster. Use a different address or edit the existing member.' };
+    }
+    return { success: false, error: msg };
+  }
+
+  const result = rpcResult as { ok?: boolean; id?: string; error?: string } | null;
+  if (!result?.ok || !result.id) {
+    return { success: false, error: result?.error ?? 'Failed to add to roster.' };
+  }
+
+  const orgMemberId = result.id;
+
+  const { data: addedMember } = await supabase
+    .from('org_members')
+    .select('entity_id')
+    .eq('id', orgMemberId)
+    .single();
+
+  const entityIdForRollback = addedMember?.entity_id ?? null;
+
+  if (!grant_workspace_access) {
+    revalidatePath('/settings');
+    revalidatePath('/settings/team');
+    revalidatePath('/network');
+    return { success: true, message: `${first_name} ${last_name} has been added to the roster. No login invite was sent.` };
+  }
+
+  if (!workspace_role_id) {
+    await rollbackRosterStep(supabase, orgMemberId, entityIdForRollback);
+    return { success: false, error: 'Workspace role is required when granting login access.' };
+  }
+
+  const system = getSystemClient();
+  const { data: invitedUser, error: inviteError } = await system.auth.admin.inviteUserByEmail(
+    email.trim(),
+    { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login` }
+  );
+
+  if (inviteError || !invitedUser?.user?.id) {
+    await rollbackRosterStep(supabase, orgMemberId, entityIdForRollback);
+    const msg = inviteError?.message ?? 'Failed to send login invite.';
+    if (msg.toLowerCase().includes('already been registered') || msg.toLowerCase().includes('already exists')) {
+      return { success: false, error: 'This email already has an account. Add them from Settings → Team with their existing account.' };
+    }
+    return { success: false, error: msg };
+  }
+
+  const invitedUserId = invitedUser.user.id;
+
+  const { data: roleRow } = await supabase
+    .from('workspace_roles')
+    .select('id, slug')
+    .eq('id', workspace_role_id)
+    .or(`workspace_id.is.null,workspace_id.eq.${workspaceId}`)
+    .single();
+
+  if (!roleRow) {
+    await rollbackRosterStep(supabase, orgMemberId, entityIdForRollback);
+    return { success: false, error: 'Invalid workspace role.' };
+  }
+
+  const legacyRole = WORKSPACE_ROLE_SLUG_TO_LEGACY[roleRow.slug] ?? 'member';
+
+  const { error: insertErr } = await supabase.from('workspace_members').insert({
+    workspace_id: workspaceId,
+    user_id: invitedUserId,
+    role_id: workspace_role_id,
+    role: legacyRole,
+  });
+
+  if (insertErr) {
+    await rollbackRosterStep(supabase, orgMemberId, entityIdForRollback);
+    return { success: false, error: insertErr.message ?? 'Failed to add to workspace team.' };
+  }
+
+  revalidatePath('/settings');
+  revalidatePath('/settings/team');
+  revalidatePath('/network');
+  return {
+    success: true,
+    message: `Invite sent to ${email}. They have been added to the roster and will get Signal login access when they accept.`,
+  };
+}
+
+async function rollbackRosterStep(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgMemberId: string,
+  entityId: string | null
+): Promise<void> {
+  await supabase.from('org_members').delete().eq('id', orgMemberId);
+  if (entityId) {
+    const { data: other } = await supabase
+      .from('org_members')
+      .select('id')
+      .eq('entity_id', entityId)
+      .limit(1)
+      .maybeSingle();
+    if (!other) {
+      await supabase.from('entities').delete().eq('id', entityId);
+    }
+  }
 }
 
 // ============================================================================

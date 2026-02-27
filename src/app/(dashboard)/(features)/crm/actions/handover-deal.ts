@@ -3,16 +3,50 @@
 import { createClient } from '@/shared/api/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getActiveWorkspaceId } from '@/shared/lib/workspace';
+import { getCrewRolesFromProposalForDeal } from './get-crew-roles-from-proposal';
 
 export type HandoverResult =
   | { success: true; eventId: string }
   | { success: false; error: string };
 
+/** Vitals from the handoff wizard: date/time, venue, client. */
+export type HandoverVitals = {
+  start_at: string;
+  end_at: string;
+  venue_entity_id?: string | null;
+  /** Set on ops.projects.client_entity_id for the project used by the new event. */
+  client_entity_id?: string | null;
+};
+
+/** Single crew item in run_of_show_data.crew_items. */
+export type HandoverCrewItem = { role: string; status?: string };
+
+/** Gear/Inventory and Crew requirements saved into ops.events.run_of_show_data. */
+export type HandoverRunOfShowData = {
+  gear_requirements?: string | null;
+  venue_restrictions?: string | null;
+  crew_roles?: string[] | null;
+  crew_items?: HandoverCrewItem[] | null;
+  [key: string]: unknown;
+};
+
+/** Optional payload from the multi-step handoff wizard. When omitted, behavior is legacy: name + date from deal only. */
+export type HandoverPayload = {
+  /** Event name (defaults to deal title when not provided). */
+  name?: string | null;
+  vitals: HandoverVitals;
+  run_of_show_data?: HandoverRunOfShowData | null;
+};
+
 /**
  * Hand over a deal to production: marks as won, creates an ops.events row, and links deal.event_id.
  * Requires a project for the workspace (ops.projects); uses first project if multiple.
+ * When payload is provided (from the handoff wizard), vitals and run_of_show_data are written to the event and project.
  */
-export async function handoverDeal(dealId: string): Promise<HandoverResult> {
+export async function handoverDeal(
+  dealId: string,
+  payload?: HandoverPayload | null
+): Promise<HandoverResult> {
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) {
     return { success: false, error: 'No active workspace.' };
@@ -74,19 +108,61 @@ export async function handoverDeal(dealId: string): Promise<HandoverResult> {
     }
     projectId = (inserted as { id: string }).id;
   }
-  const proposedDate = r.proposed_date ? String(r.proposed_date) : new Date().toISOString().slice(0, 10);
-  const startAt = `${proposedDate}T08:00:00.000Z`;
-  const endAt = `${proposedDate}T18:00:00.000Z`;
+
   const title = (r.title as string)?.trim() || 'Untitled Production';
+  const proposedDate = r.proposed_date ? String(r.proposed_date) : new Date().toISOString().slice(0, 10);
+
+  let startAt: string;
+  let endAt: string;
+  let eventName: string;
+  let venueEntityId: string | null = null;
+  let runOfShowData: HandoverRunOfShowData | null = null;
+  let clientEntityId: string | null = null;
+
+  if (payload?.vitals) {
+    startAt = payload.vitals.start_at;
+    endAt = payload.vitals.end_at;
+    venueEntityId = payload.vitals.venue_entity_id ?? null;
+    clientEntityId = payload.vitals.client_entity_id ?? null;
+    eventName = (payload.name ?? title).trim() || title;
+    runOfShowData = payload.run_of_show_data ?? null;
+  } else {
+    startAt = `${proposedDate}T08:00:00.000Z`;
+    endAt = `${proposedDate}T18:00:00.000Z`;
+    eventName = title;
+  }
+
+  // Derive crew roles from proposal: service packages with staff_role (e.g. DJ) become crew needs on the event
+  const proposalCrewRoles = await getCrewRolesFromProposalForDeal(dealId);
+  const wizardCrewRoles = runOfShowData?.crew_roles ?? [];
+  const wizardCrewItems: HandoverCrewItem[] = Array.isArray(runOfShowData?.crew_items)
+    ? runOfShowData.crew_items.filter((c): c is HandoverCrewItem => c != null && typeof (c as HandoverCrewItem).role === 'string')
+    : [];
+  const combinedCrewRoles = [...new Set([...wizardCrewRoles, ...proposalCrewRoles])].filter(
+    (r) => typeof r === 'string' && r.trim()
+  );
+  if (combinedCrewRoles.length > 0) {
+    const existingRoles = new Set(wizardCrewItems.map((c) => c.role));
+    const newItems = combinedCrewRoles
+      .filter((role) => !existingRoles.has(role))
+      .map((role) => ({ role, status: 'requested' as const }));
+    runOfShowData = {
+      ...runOfShowData,
+      crew_roles: combinedCrewRoles,
+      crew_items: [...wizardCrewItems, ...newItems],
+    };
+  }
 
   const { data: event, error: eventErr } = await supabase
     .schema('ops')
     .from('events')
     .insert({
       project_id: projectId,
-      name: title,
+      name: eventName,
       start_at: startAt,
       end_at: endAt,
+      venue_entity_id: venueEntityId,
+      run_of_show_data: runOfShowData,
     })
     .select('id')
     .single();
@@ -97,6 +173,14 @@ export async function handoverDeal(dealId: string): Promise<HandoverResult> {
   }
 
   const eventId = (event as { id: string }).id;
+
+  if (clientEntityId) {
+    await supabase
+      .schema('ops')
+      .from('projects')
+      .update({ client_entity_id: clientEntityId })
+      .eq('id', projectId);
+  }
 
   const { error: updateErr } = await supabase
     .from('deals')

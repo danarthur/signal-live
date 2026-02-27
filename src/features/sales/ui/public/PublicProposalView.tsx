@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ProposalHero } from './ProposalHero';
 import { LineItemGrid } from './LineItemGrid';
@@ -18,12 +19,21 @@ export interface PublicProposalViewProps {
 }
 
 export function PublicProposalView({ data, token, className }: PublicProposalViewProps) {
+  const router = useRouter();
   const [signOpen, setSignOpen] = useState(false);
   const [signed, setSigned] = useState(data.proposal.status === 'accepted');
 
   const openSign = useCallback(() => setSignOpen(true), []);
   const closeSign = useCallback(() => setSignOpen(false), []);
   const onSignSuccess = useCallback(() => setSigned(true), []);
+
+  const handleDone = useCallback(() => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      window.close();
+    }
+  }, [router]);
 
   return (
     <div
@@ -70,6 +80,20 @@ export function PublicProposalView({ data, token, className }: PublicProposalVie
           </p>
           <p className="text-sm text-ink-muted mt-1.5 max-w-sm mx-auto">
             Your signature has been recorded. Thank you.
+          </p>
+          <button
+            type="button"
+            onClick={handleDone}
+            className={cn(
+              'mt-4 rounded-2xl h-10 px-6 font-medium text-sm tracking-tight',
+              'border border-[var(--glass-border)] bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] text-ink',
+              'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--glass-bg)]'
+            )}
+          >
+            Done
+          </button>
+          <p className="text-xs text-ink-muted mt-2">
+            You can close this tab if the page does not change.
           </p>
         </motion.div>
       ) : (

@@ -9,6 +9,9 @@ import { IdentityHeader } from './IdentityHeader';
 import { TradeLedger } from './TradeLedger';
 import { PrivateNotes } from './PrivateNotes';
 import { NodeCrewList } from './NodeCrewList';
+import { RoleSelect } from '@/features/team-invite/ui/RoleSelect';
+import type { SignalRoleId } from '@/features/team-invite/model/role-presets';
+import { updateOrgMemberRole } from '@/features/network-data';
 import type { NodeDetail, NodeDetailCrewMember } from '@/features/network-data';
 
 type TabId = 'transmission' | 'crew' | 'ledger';
@@ -26,6 +29,55 @@ const ALL_TABS: { id: TabId; label: string }[] = [
   { id: 'crew', label: 'Crew' },
   { id: 'ledger', label: 'Ledger' },
 ];
+
+function InternalMemberRoleCard({
+  details,
+  sourceOrgId,
+  onSaved,
+}: {
+  details: NodeDetail;
+  sourceOrgId: string;
+  onSaved: () => void;
+}) {
+  const router = useRouter();
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const role = (details.memberRole ?? 'member') as SignalRoleId;
+  const canAssignElevated = details.canAssignElevatedRole ?? false;
+
+  const handleRoleChange = React.useCallback(
+    async (newRole: SignalRoleId) => {
+      setError(null);
+      setSaving(true);
+      const result = await updateOrgMemberRole(details.id, sourceOrgId, newRole);
+      setSaving(false);
+      if (result.ok) {
+        onSaved();
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+    },
+    [details.id, sourceOrgId, onSaved, router]
+  );
+
+  return (
+    <div className="liquid-card rounded-2xl p-4 md:col-span-1">
+      <h3 className="text-sm font-medium tracking-wide text-[var(--color-ink-muted)] mb-3">
+        Role
+      </h3>
+      <RoleSelect
+        value={role}
+        onChange={handleRoleChange}
+        canAssignElevated={canAssignElevated}
+        disabled={saving}
+      />
+      {error && (
+        <p className="mt-2 text-xs text-[var(--color-signal-error)]">{error}</p>
+      )}
+    </div>
+  );
+}
 
 /** Crew tab only for organizations (vendor, venue, client). Hide for individuals (coordinator or uncategorized, e.g. groom). */
 function getTabsForDetail(details: NodeDetail): { id: TabId; label: string }[] {
@@ -223,6 +275,14 @@ export function NetworkDetailSheet({ details, onClose, sourceOrgId }: NetworkDet
                       initialNotes={details.notes}
                     />
                   </div>
+                  {/* Role — internal_employee only */}
+                  {!isPartner && (
+                    <InternalMemberRoleCard
+                      details={details}
+                      sourceOrgId={sourceOrgId}
+                      onSaved={handleRefresh}
+                    />
+                  )}
                   {/* Website — col-span-2 when partner */}
                   {isPartner && details.orgWebsite && (
                     <div className="liquid-card rounded-2xl p-4 md:col-span-2">

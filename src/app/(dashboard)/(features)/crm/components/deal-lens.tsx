@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { FileCheck, FileText, ExternalLink } from 'lucide-react';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { PipelineTracker } from '@/features/sales/ui/pipeline-tracker';
 import { ProposalBuilder } from '@/features/sales/ui/proposal-builder';
 import { getProposalForDeal, getProposalPublicUrl } from '@/features/sales/api/proposal-actions';
 import type { ProposalWithItems } from '@/features/sales/model/types';
 import { SIGNAL_PHYSICS, M3_STAGGER_CHILDREN } from '@/shared/lib/motion-constants';
+import { getContractForEvent } from '../actions/get-contract-for-event';
 import type { DealDetail } from '../actions/get-deal';
 import type { DealClientContext } from '../actions/get-deal-client';
 import type { DealStakeholderDisplay } from '../actions/deal-stakeholders';
@@ -41,6 +43,7 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
   const isLocked = !!deal.event_id;
   const [initialProposal, setInitialProposal] = useState<ProposalWithItems | null>(null);
   const [publicProposalUrl, setPublicProposalUrl] = useState<string | null>(null);
+  const [contract, setContract] = useState<Awaited<ReturnType<typeof getContractForEvent>>>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +54,20 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
       cancelled = true;
     };
   }, [deal.id]);
+
+  useEffect(() => {
+    if (!deal.event_id) {
+      setContract(null);
+      return;
+    }
+    let cancelled = false;
+    getContractForEvent(deal.event_id).then((c) => {
+      if (!cancelled) setContract(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deal.event_id]);
 
   // Refetch proposal when user returns to this tab (e.g. after sending from proposal builder)
   useEffect(() => {
@@ -64,10 +81,10 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [deal.id]);
 
-  // When proposal is sent, fetch the public URL from the server (correct token)
+  // When proposal is sent or deal is handed over, fetch the public URL so "View signed proposal" works
   useEffect(() => {
     const sent = initialProposal?.status === 'sent' || initialProposal?.status === 'accepted' || initialProposal?.status === 'viewed';
-    if (!sent) {
+    if (!sent && !deal.event_id) {
       setPublicProposalUrl(null);
       return;
     }
@@ -78,7 +95,7 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
     return () => {
       cancelled = true;
     };
-  }, [deal.id, initialProposal?.status]);
+  }, [deal.id, deal.event_id, initialProposal?.status]);
 
   const refetchProposal = useCallback(() => {
     getProposalForDeal(deal.id).then((p) => {
@@ -93,6 +110,7 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
 
   const proposalStatus = initialProposal?.status;
   const proposalSent = proposalStatus === 'sent' || proposalStatus === 'accepted' || proposalStatus === 'viewed';
+  const proposalSigned = proposalStatus === 'accepted';
   const sentDate =
     initialProposal?.updated_at &&
     new Date(initialProposal.updated_at).toLocaleDateString(undefined, {
@@ -100,16 +118,21 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
       month: 'short',
       year: 'numeric',
     });
+  const signedAt = (initialProposal as { accepted_at?: string } | null)?.accepted_at;
+  const signedDate =
+    signedAt &&
+    new Date(signedAt).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   return (
     <motion.div
       layout
-      initial="hidden"
-      animate="visible"
-      variants={{
-        visible: { transition: { staggerChildren: M3_STAGGER_CHILDREN } },
-        hidden: {},
-      }}
-      className="flex flex-col gap-6"
+      initial={false}
+      animate={{ opacity: 1 }}
+      className="flex flex-col gap-6 min-h-0"
+      data-lens="deal"
     >
       {/* Stakeholder Map: Bill-To, Planner, Venue, Vendor + Add Connection */}
       <StakeholderGrid
@@ -132,17 +155,83 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
         />
       </LiquidPanel>
 
-      {/* Proposal card: when handed over (has event), show ProposalBuilder (receipt); otherwise show "Build proposal" CTA card. */}
+      {/* When handed over: show Contract (signed) + View proposal CTA + inline receipt. */}
       {isLocked && deal.workspace_id ? (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <ProposalBuilder
-            dealId={deal.id}
-            workspaceId={deal.workspace_id}
-            initialProposal={initialProposal}
-            readOnly={true}
-            onProposalRefetch={refetchProposal}
-            className="max-w-2xl"
-          />
+        <div className="flex flex-col gap-6 flex-1 min-h-[200px]">
+          {/* Contract + View signed proposal — primary CTA so user can always see what was signed */}
+          <LiquidPanel className="p-6 rounded-[28px] border border-white/10">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-2xl liquid-panel-nested border border-white/10 shrink-0">
+                <FileCheck size={24} className="text-[var(--color-signal-success)]" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium uppercase tracking-widest text-ink-muted mb-1">
+                  Contract
+                </p>
+                <h2 className="text-ceramic font-medium tracking-tight leading-none">
+                  {contract?.status === 'signed' ? 'Signed by client' : 'Contract'}
+                </h2>
+                {contract?.signed_at && (
+                  <p className="text-sm text-mercury mt-2">
+                    Signed on{' '}
+                    {new Date(contract.signed_at).toLocaleDateString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </p>
+                )}
+                {contract?.pdf_url ? (
+                  <a
+                    href={contract.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 text-sm text-[var(--color-neon-blue)] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded"
+                  >
+                    <ExternalLink size={16} aria-hidden />
+                    View PDF
+                  </a>
+                ) : (
+                  <p className="text-sm text-ink-muted mt-2">
+                    The signed proposal is the contract record.
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Primary CTA: view the signed proposal (same view the client saw) */}
+            {publicProposalUrl ? (
+              <div className="mt-5 pt-4 border-t border-white/10">
+                <a
+                  href={publicProposalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="liquid-levitation inline-flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start py-3 px-5 rounded-[28px] border border-white/10 font-medium text-sm tracking-tight bg-[var(--color-neon-amber)]/10 text-[var(--color-neon-amber)] hover:bg-[var(--color-neon-amber)]/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-[28px]"
+                >
+                  <FileText size={18} aria-hidden />
+                  View signed proposal
+                </a>
+              </div>
+            ) : (
+              <div className="mt-5 pt-4 border-t border-white/10">
+                <p className="text-sm text-ink-muted">Loading proposal link…</p>
+              </div>
+            )}
+          </LiquidPanel>
+
+          {/* Inline proposal (read-only receipt) */}
+          <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
+            <p className="text-xs font-medium uppercase tracking-widest text-ink-muted">
+              Proposal (agreed scope)
+            </p>
+            <ProposalBuilder
+              dealId={deal.id}
+              workspaceId={deal.workspace_id}
+              initialProposal={initialProposal}
+              readOnly={true}
+              onProposalRefetch={refetchProposal}
+              className="max-w-2xl"
+            />
+          </div>
         </div>
       ) : (
         <>
@@ -159,31 +248,47 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
                   Proposal
                 </p>
                 <h2 className="text-[clamp(1.125rem,2.5vw,1.375rem)] font-medium text-ceramic tracking-tight leading-none mb-3">
-                  {proposalSent ? 'Proposal sent' : initialProposal ? 'Continue editing' : 'Build proposal'}
+                  {proposalSigned
+                    ? 'Signed'
+                    : proposalSent
+                      ? 'Proposal sent'
+                      : initialProposal
+                        ? 'Continue editing'
+                        : 'Build proposal'}
                 </h2>
                 <p className="text-ink-muted text-sm leading-relaxed mb-4 flex-1">
-                  {proposalSent
-                    ? sentDate
-                      ? `Sent on ${sentDate}. You can still edit and resend if the client needs changes.`
-                      : 'You can still edit and resend if the client needs changes.'
-                    : initialProposal
-                      ? 'Your draft is saved. Open the proposal builder to continue editing and send to the client.'
-                      : 'Open the proposal builder to hand over this deal, drag catalog items in, then send to the client.'}
+                  {proposalSigned
+                    ? signedDate
+                      ? `Signed on ${signedDate}. Proposal is locked; use a change order to add items.`
+                      : 'Proposal is locked; use a change order to add items.'
+                    : proposalSent
+                      ? sentDate
+                        ? `Sent on ${sentDate}. You can still edit and resend if the client needs changes.`
+                        : 'You can still edit and resend if the client needs changes.'
+                      : initialProposal
+                        ? 'Your draft is saved. Open the proposal builder to continue editing and send to the client.'
+                        : 'Open the proposal builder to hand over this deal, drag catalog items in, then send to the client.'}
                 </p>
                 <Link
                   href={`/crm/deal/${deal.id}/proposal-builder`}
                   className="liquid-levitation inline-flex items-center justify-center gap-2 py-3 px-5 rounded-[28px] border border-white/10 backdrop-blur-xl font-medium text-sm tracking-tight transition-all hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-obsidian)] bg-[var(--color-neon-amber)]/10 text-[var(--color-neon-amber)] hover:bg-[var(--color-neon-amber)]/20"
                 >
-                  {proposalSent ? 'Open proposal' : initialProposal ? 'Continue editing' : 'Build proposal'}
+                  {proposalSigned
+                    ? 'View proposal'
+                    : proposalSent
+                      ? 'Open proposal'
+                      : initialProposal
+                        ? 'Continue editing'
+                        : 'Build proposal'}
                 </Link>
-                {proposalSent && sentDate && (
+                {(proposalSent || proposalSigned) && (sentDate || signedDate) && (
                   <div className="mt-5 pt-4 border-t border-white/10">
                     <p className="text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
                       Record
                     </p>
                     <p className="text-sm text-ink-muted">
-                      Sent on {sentDate}
-                      {publicProposalUrl && (
+                      {proposalSigned && signedDate ? `Signed on ${signedDate}` : sentDate ? `Sent on ${sentDate}` : null}
+                      {publicProposalUrl && (proposalSent || proposalSigned) && (
                         <>
                           {' · '}
                           <a
@@ -197,6 +302,24 @@ export function DealLens({ deal, client, stakeholders = [], sourceOrgId = null, 
                         </>
                       )}
                     </p>
+                  </div>
+                )}
+                {proposalSigned && !deal.event_id && onHandover && (
+                  <div className="mt-5 pt-4 border-t border-white/10">
+                    <p className="text-sm text-ink-muted mb-3">
+                      Hand over to production to unlock the Plan tab (run of show, crewing, logistics).
+                    </p>
+                    <motion.button
+                      type="button"
+                      onClick={onHandover}
+                      disabled={handingOver}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={SIGNAL_PHYSICS}
+                      className="liquid-levitation w-full py-3 px-5 rounded-[28px] border border-white/10 backdrop-blur-xl font-medium text-sm tracking-tight transition-all hover:brightness-110 disabled:opacity-60 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-obsidian)] bg-[var(--color-neon-blue)]/10 text-[var(--color-neon-blue)] hover:bg-[var(--color-neon-blue)]/20"
+                    >
+                      {handingOver ? 'Handing over…' : 'Hand over to production'}
+                    </motion.button>
                   </div>
                 )}
                 {deal.workspace_id ? (

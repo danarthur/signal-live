@@ -7,6 +7,7 @@
 import 'server-only';
 
 import { createClient } from '@/shared/api/supabase/server';
+import { canAccessDealProposals } from '@/shared/lib/permissions';
 import type {
   DealRoomDTO,
   DealRoomGig,
@@ -107,6 +108,11 @@ export async function getGigDealRoom(eventId: string): Promise<DealRoomDTO | nul
     .select('id')
     .eq('event_id', eventId)
     .maybeSingle();
+
+  if (dealRow?.id && gig.workspaceId) {
+    const allowed = await canAccessDealProposals(gig.workspaceId, dealRow.id);
+    if (!allowed) return null;
+  }
 
   let activeProposal: ProposalWithItems | null = null;
   let totalValue = 0;

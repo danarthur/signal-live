@@ -196,40 +196,6 @@ export function ProposalBuilder({
     item.quantity * unitMultiplier(item) * effectiveUnitPrice(item);
   const total = lineItems.reduce((sum, item) => sum + lineTotal(item), 0);
 
-  if (readOnly) {
-    return (
-      <div className={cn('flex flex-col gap-4', className)}>
-        <LiquidPanel className="p-6 rounded-[28px] border border-white/10">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-4">
-            Proposal (locked)
-          </h2>
-          {lineItems.length === 0 ? (
-            <p className="text-sm text-ink-muted">No line items.</p>
-          ) : (
-            <ul className="space-y-2">
-              {lineItems.map((item, i) => (
-                <li
-                  key={item.id ?? i}
-                  className="flex items-center justify-between gap-4 py-2 border-b border-white/10 last:border-0 text-sm"
-                >
-                  <span className="text-ink truncate">{item.name}</span>
-                  <span className="text-ink-muted tabular-nums shrink-0">
-                    {item.quantity} × ${effectiveUnitPrice(item).toLocaleString()} = $
-                    {(item.quantity * effectiveUnitPrice(item)).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-white/10">
-            <span className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Total</span>
-            <span className="text-xl font-semibold text-ink tabular-nums">${total.toLocaleString()}</span>
-          </div>
-        </LiquidPanel>
-      </div>
-    );
-  }
-
   const addCustomLineItem = useCallback(() => {
     setLineItems((prev) => [
       ...prev,
@@ -479,6 +445,40 @@ export function ProposalBuilder({
       }
     });
   }, [workspaceId, lineItems]);
+
+  if (readOnly) {
+    return (
+      <div className={cn('flex flex-col gap-4', className)}>
+        <LiquidPanel className="p-6 rounded-[28px] border border-white/10">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-4">
+            Proposal (locked)
+          </h2>
+          {lineItems.length === 0 ? (
+            <p className="text-sm text-ink-muted">No line items.</p>
+          ) : (
+            <ul className="space-y-2">
+              {lineItems.map((item, i) => (
+                <li
+                  key={item.id ?? i}
+                  className="flex items-center justify-between gap-4 py-2 border-b border-white/10 last:border-0 text-sm"
+                >
+                  <span className="text-ink truncate">{item.name}</span>
+                  <span className="text-ink-muted tabular-nums shrink-0">
+                    {item.quantity} × ${effectiveUnitPrice(item).toLocaleString()} = $
+                    {(item.quantity * effectiveUnitPrice(item)).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-white/10">
+            <span className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Total</span>
+            <span className="text-xl font-semibold text-ink tabular-nums">${total.toLocaleString()}</span>
+          </div>
+        </LiquidPanel>
+      </div>
+    );
+  }
 
   const hasVariableUnits = lineItems.some((i) => i.unitType === 'hour' || i.unitType === 'day');
   const receiptRowClass = hasVariableUnits

@@ -35,11 +35,16 @@ export default async function CRMPage({
   const nodeId = params.nodeId ?? null;
   const kind =
     params.kind === 'external_partner' || params.kind === 'internal_employee' ? params.kind : null;
-  const currentOrgId = await getCurrentOrgId();
-  const supabase = await createClient();
-  const workspaceId = await getActiveWorkspaceId();
 
-  const [dealsRes, eventsRes] = await Promise.all([
+  let currentOrgId: string | null = null;
+  let gigs: StreamCardItem[] = [];
+
+  try {
+    currentOrgId = await getCurrentOrgId();
+    const supabase = await createClient();
+    const workspaceId = await getActiveWorkspaceId();
+
+    const [dealsRes, eventsRes] = await Promise.all([
     workspaceId
       ? supabase
           .from('deals')
@@ -64,9 +69,9 @@ export default async function CRMPage({
             .order('start_at', { ascending: true });
         })()
       : Promise.resolve({ data: [] as Record<string, unknown>[] }),
-  ]);
+    ]);
 
-  const dealGigs: StreamCardItem[] = (dealsRes.data ?? []).map((d: Record<string, unknown>) => ({
+    const dealGigs: StreamCardItem[] = (dealsRes.data ?? []).map((d: Record<string, unknown>) => ({
     id: d.id as string,
     title: (d.title as string) ?? null,
     status: (d.status as string) ?? null,
@@ -76,27 +81,38 @@ export default async function CRMPage({
     source: 'deal' as const,
   }));
 
-  const eventGigs: StreamCardItem[] = (eventsRes.data ?? []).map((e: Record<string, unknown>) => ({
-    id: e.id as string,
-    title: (e.name as string) ?? null,
-    status: null,
-    event_date: e.start_at ? String((e.start_at as string).slice(0, 10)) : null,
-    location: null,
-    client_name: null,
-    source: 'event' as const,
-  }));
+    const eventGigs: StreamCardItem[] = (eventsRes.data ?? []).map((e: Record<string, unknown>) => ({
+      id: e.id as string,
+      title: (e.name as string) ?? null,
+      status: null,
+      event_date: e.start_at ? String((e.start_at as string).slice(0, 10)) : null,
+      location: null,
+      client_name: null,
+      source: 'event' as const,
+    }));
 
-  const gigs: StreamCardItem[] = [...dealGigs, ...eventGigs].sort((a, b) => {
-    const da = a.event_date ?? '';
-    const db = b.event_date ?? '';
-    return da.localeCompare(db);
-  });
+    gigs = [...dealGigs, ...eventGigs].sort((a, b) => {
+      const da = a.event_date ?? '';
+      const db = b.event_date ?? '';
+      return da.localeCompare(db);
+    });
+  } catch (err) {
+    console.error('[CRM] page load error:', err);
+    // Render shell with empty list so user can retry or navigate; avoid 500
+  }
+
+  // Pass selectedId from URL when it's in the server list OR when server list is empty
+  // (so client can show Prism after getCrmGigs() populates the list on load failure).
+  const effectiveSelectedId =
+    selectedId && (gigs.some((g) => g.id === selectedId) || gigs.length === 0)
+      ? selectedId
+      : null;
 
   return (
     <>
       <ProductionGridShell
         gigs={gigs}
-        selectedId={selectedId && gigs.some((g) => g.id === selectedId) ? selectedId : null}
+        selectedId={effectiveSelectedId}
         streamMode={streamMode}
         currentOrgId={currentOrgId}
       />

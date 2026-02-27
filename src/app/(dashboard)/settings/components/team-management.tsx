@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
@@ -31,6 +32,8 @@ import {
   type WorkspaceMemberData,
   type WorkspacePermissions,
 } from '@/app/actions/workspace';
+import { WorkspaceRoleSelect } from '@/features/role-builder';
+import { InviteTeamMemberSheet } from './InviteTeamMemberSheet';
 
 // ============================================================================
 // Types
@@ -110,13 +113,14 @@ const ROLE_COLORS = {
 // ============================================================================
 
 export function TeamManagement({ workspaceId, members, currentUserRole }: TeamManagementProps) {
+  const router = useRouter();
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   const springConfig = { type: 'spring', stiffness: 300, damping: 30 } as const;
-  
+
   const canManage = currentUserRole === 'owner' || currentUserRole === 'admin';
   
   const handleTogglePermission = async (
@@ -177,11 +181,14 @@ export function TeamManagement({ workspaceId, members, currentUserRole }: TeamMa
           </div>
         </div>
         
-        {!canManage && (
-          <div className="px-3 py-1.5 rounded-lg bg-ink/5 border border-[var(--glass-border)]">
-            <span className="text-xs text-ink-muted">View only</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {canManage && <InviteTeamMemberSheet workspaceId={workspaceId} canManage={canManage} />}
+          {!canManage && (
+            <div className="px-3 py-1.5 rounded-lg bg-ink/5 border border-[var(--glass-border)]">
+              <span className="text-xs text-ink-muted">View only</span>
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Error Message */}
@@ -240,7 +247,7 @@ export function TeamManagement({ workspaceId, members, currentUserRole }: TeamMa
                       {member.fullName || member.email}
                     </p>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider border ${ROLE_COLORS[member.role]}`}>
-                      {member.role}
+                      {member.roleName ?? member.role}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -282,6 +289,14 @@ export function TeamManagement({ workspaceId, members, currentUserRole }: TeamMa
                     className="overflow-hidden"
                   >
                     <div className="px-4 pb-4 pt-2 border-t border-[var(--glass-border)] space-y-4">
+                      {/* Role Select (workspace_roles: system + custom) */}
+                      <WorkspaceRoleSelect
+                        workspaceId={workspaceId}
+                        memberId={member.id}
+                        value={member.roleId}
+                        disabled={isPending}
+                        onSuccess={() => router.refresh()}
+                      />
                       {/* Department Select */}
                       <div>
                         <label className="block text-[10px] font-medium text-ink-muted uppercase tracking-[0.15em] mb-2">
@@ -374,6 +389,7 @@ export function TeamManagement({ workspaceId, members, currentUserRole }: TeamMa
         <div className="p-8 text-center rounded-xl border-2 border-dashed border-[var(--glass-border)]">
           <Users className="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
           <p className="text-sm text-ink-muted">No team members yet</p>
+          <p className="mt-1 text-xs text-ink-muted">Use Invite team member to add someone to the roster and optionally grant Signal login.</p>
         </div>
       )}
     </div>

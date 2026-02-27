@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useActionState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Trash2, User } from 'lucide-react';
 import {
@@ -24,6 +25,11 @@ import {
   addSkillToMember,
   removeSkillFromMember,
 } from '../api/member-actions';
+import { RoleSelect } from '@/features/team-invite/ui/RoleSelect';
+import type { SignalRoleId } from '@/features/team-invite/model/role-presets';
+import { WorkspaceRoleSelect } from '@/features/role-builder';
+import { useWorkspace } from '@/shared/ui/providers/WorkspaceProvider';
+import { getWorkspaceMemberByOrgMemberId } from '@/app/actions/workspace';
 
 const PRESET_SKILL_TAGS = [
   'Audio A1',
@@ -64,9 +70,19 @@ export function MemberDetailSheet({
   onSuccess,
 }: MemberDetailSheetProps) {
   const router = useRouter();
+  const { workspaceId } = useWorkspace();
   const [tab, setTab] = React.useState<TabId>('profile');
   const [member, setMember] = React.useState<OrgMemberWithSkillsDTO | null>(initialMember ?? null);
   const [addSkillTag, setAddSkillTag] = React.useState('');
+  const [role, setRole] = React.useState<SignalRoleId>((member?.role as SignalRoleId) ?? 'member');
+  const [workspaceMember, setWorkspaceMember] = React.useState<{
+    workspaceMemberId: string;
+    roleId: string | null;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (member?.role) setRole((member.role as SignalRoleId) || 'member');
+  }, [member?.role]);
 
   React.useEffect(() => {
     if (open && orgMemberId) {
@@ -80,6 +96,21 @@ export function MemberDetailSheet({
     }
   }, [open, orgMemberId, initialMember?.id]);
 
+  React.useEffect(() => {
+    if (!open || !member?.id || !workspaceId) {
+      setWorkspaceMember(null);
+      return;
+    }
+    let cancelled = false;
+    getWorkspaceMemberByOrgMemberId(member.id, workspaceId).then((res) => {
+      if (!cancelled && res) setWorkspaceMember(res);
+      else if (!cancelled) setWorkspaceMember(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, member?.id, workspaceId]);
+
   const [identityState, submitIdentity] = useActionState(
     async (
       _prev: { ok: boolean; error?: string } | null,
@@ -90,12 +121,15 @@ export function MemberDetailSheet({
       const last_name = (formData.get('last_name') as string)?.trim() || null;
       const phone = (formData.get('phone') as string)?.trim() || null;
       const job_title = (formData.get('job_title') as string)?.trim() || null;
+      const roleRaw = formData.get('role') as string;
+      const roleValue = roleRaw && ['owner', 'admin', 'manager', 'member', 'restricted'].includes(roleRaw) ? roleRaw : undefined;
       const result = await updateMemberIdentity({
         org_member_id,
         first_name,
         last_name,
         phone,
         job_title,
+        role: roleValue as SignalRoleId | undefined,
       });
       return result.ok ? result : { ok: false, error: result.error };
     },
@@ -253,6 +287,49 @@ export function MemberDetailSheet({
                       defaultValue={member.job_title ?? ''}
                       placeholder="e.g. Audio A1"
                       className="bg-transparent border-[var(--color-mercury)] text-[var(--color-ink)]"
+                    />
+                  </div>
+                  <input type="hidden" name="role" value={role} />
+                  {workspaceId && (
+                    <>
+                      {workspaceMember ? (
+                        <WorkspaceRoleSelect
+                          label="Workspace role"
+                          workspaceId={workspaceId}
+                          memberId={workspaceMember.workspaceMemberId}
+                          value={workspaceMember.roleId}
+                          onSuccess={() => {
+                            onSuccess?.();
+                            router.refresh();
+                            getWorkspaceMemberByOrgMemberId(member.id, workspaceId).then((res) => {
+                              if (res) setWorkspaceMember(res);
+                            });
+                          }}
+                        />
+                      ) : (
+                        <div>
+                          <p className="mb-1.5 text-xs font-medium uppercase tracking-widest text-ink-muted">
+                            Workspace role
+                          </p>
+                          <p className="text-sm text-ink-muted leading-relaxed">
+                            This person is not in your workspace team. Add them in{' '}
+                            <Link href="/settings" className="text-[var(--color-neon-blue)] hover:underline">
+                              Settings → Team
+                            </Link>{' '}
+                            to assign a workspace role (including custom roles).
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium uppercase tracking-widest text-ink-muted">
+                      Org role
+                    </p>
+                    <RoleSelect
+                      value={role}
+                      onChange={setRole}
+                      canAssignElevated={true}
                     />
                   </div>
                   <Button type="submit" variant="default" size="sm">

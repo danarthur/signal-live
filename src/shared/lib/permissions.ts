@@ -1,18 +1,25 @@
 /**
  * Permission Utilities
- * Centralized permission checking for Signal
+ * Centralized permission checking for Signal.
+ * Capabilities-based path: use hasCapability(workspaceId, capabilityKey) and the
+ * Permission Registry (permission-registry.ts). Legacy path: hasPermission(..., PermissionKey).
+ *
+ * Future: Auth Hooks can inject permission_bundle into JWT app_metadata so RLS
+ * can check without a DB read per row — see docs/design/capabilities-based-roles-and-role-builder.md §4.4.
  * @module lib/permissions
  */
 
 import 'server-only';
 
 import { createClient } from '@/shared/api/supabase/server';
+import type { CapabilityKey } from '@/shared/lib/permission-registry';
+import { capabilityToLegacyPermission } from '@/shared/lib/permission-registry';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type PermissionKey = 
+export type PermissionKey =
   | 'view_finance'
   | 'view_planning'
   | 'view_ros'
@@ -29,11 +36,56 @@ export interface WorkspacePermissions {
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
+// Re-export for callers that want the new capability type
+export type { CapabilityKey } from '@/shared/lib/permission-registry';
+
 // Owner and admin have all permissions by default
 const ELEVATED_ROLES: WorkspaceRole[] = ['owner', 'admin'];
 
 // ============================================================================
-// Core Permission Check
+// Capability check (unified path: role_id → permission_bundle)
+// ============================================================================
+
+/**
+ * Checks if the current user (or given user) has a specific capability in the workspace.
+ * Uses the member_has_capability RPC: resolves workspace_members.role_id → workspace_roles.permission_bundle,
+ * or falls back to legacy role text when role_id is not yet set.
+ *
+ * @param userId - Optional; defaults to current auth user.
+ * @param workspaceId - Workspace to check.
+ * @param capabilityKey - Atomic permission key (e.g. 'finance:view', 'deals:read:global'). Use keys from permission-registry.
+ * @returns true if the user has the capability.
+ */
+export async function hasCapability(
+  userId: string | null,
+  workspaceId: string,
+  capabilityKey: CapabilityKey
+): Promise<boolean> {
+  const supabase = await createClient();
+  const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+  if (!effectiveUserId) return false;
+
+  // RPC uses auth.uid() for the check; if we're checking another user we must use a different path.
+  // For now, member_has_capability only supports "current user". So if userId is provided and different from current user,
+  // fall back to legacy hasPermission for that user (or we'd need an RPC that accepts p_user_id).
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && userId && user.id !== userId) {
+    // Caller asked for a different user; RPC uses auth.uid(). Use legacy path if this capability maps to a legacy key.
+    const legacyKey = capabilityToLegacyPermission(capabilityKey);
+    if (legacyKey) return hasPermission(userId, workspaceId, legacyKey as PermissionKey);
+    return false;
+  }
+
+  const { data, error } = await supabase.rpc('member_has_capability', {
+    p_workspace_id: workspaceId,
+    p_permission_key: capabilityKey,
+  });
+  if (error) return false;
+  return data === true;
+}
+
+// ============================================================================
+// Core Permission Check (legacy keys; can delegate to hasCapability when mapped)
 // ============================================================================
 
 /**
@@ -239,6 +291,79 @@ export async function canManageLocations(
   workspaceId: string
 ): Promise<boolean> {
   return hasPermission(userId, workspaceId, 'manage_locations');
+}
+
+// ============================================================================
+// Deal stakeholder overrides (contextual access)
+// ============================================================================
+
+/**
+ * Two-step check for access to a deal's financial context (invoices, proposal, payments).
+ * Step 1: User has workspace capability `finance:view` (global).
+ * Step 2: If not, check if the current user's entity is a stakeholder (bill_to, planner, etc.) on this deal;
+ *   if yes, grant contextual access to that deal's financial data.
+ * Use in deal-scoped and event→deal finance routes/actions.
+ */
+export async function canAccessDealFinancials(
+  workspaceId: string,
+  dealId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const hasGlobal = await hasCapability(user.id, workspaceId, 'finance:view');
+  if (hasGlobal) return true;
+
+  const { data: entity } = await supabase
+    .from('entities')
+    .select('id')
+    .eq('auth_id', user.id)
+    .maybeSingle();
+  if (!entity?.id) return false;
+
+  const { data: stake, error } = await supabase
+    .from('deal_stakeholders')
+    .select('id')
+    .eq('deal_id', dealId)
+    .eq('entity_id', entity.id)
+    .limit(1)
+    .maybeSingle();
+
+  return !error && !!stake;
+}
+
+/**
+ * Two-step check for access to a deal's proposals (view/send context).
+ * Step 1: hasCapability(workspaceId, 'proposals:view'). Step 2: if not, allow if current user's entity is a stakeholder on this deal.
+ */
+export async function canAccessDealProposals(
+  workspaceId: string,
+  dealId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const hasGlobal = await hasCapability(user.id, workspaceId, 'proposals:view');
+  if (hasGlobal) return true;
+
+  const { data: entity } = await supabase
+    .from('entities')
+    .select('id')
+    .eq('auth_id', user.id)
+    .maybeSingle();
+  if (!entity?.id) return false;
+
+  const { data: stake, error } = await supabase
+    .from('deal_stakeholders')
+    .select('id')
+    .eq('deal_id', dealId)
+    .eq('entity_id', entity.id)
+    .limit(1)
+    .maybeSingle();
+
+  return !error && !!stake;
 }
 
 // ============================================================================

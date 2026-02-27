@@ -31,28 +31,32 @@ export function SignProposalDialog({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await signProposal(token, signatureName);
-      if (result.success) {
-        onSuccess();
-        onClose();
-        setSignatureName('');
-        setError(null);
-        try {
-          const confetti = (await import('canvas-confetti')).default;
-          confetti({
-            particleCount: 80,
-            spread: 55,
-            origin: { y: 0.6 },
-            colors: ['#D4C5B0', '#E5E2DC', '#4A453E', '#FDFCF8'],
-            ticks: 120,
-            gravity: 0.8,
-            scalar: 1.1,
-          });
-        } catch {
-          // confetti optional
+      try {
+        const result = await signProposal(token, signatureName);
+        if (result.success) {
+          onSuccess();
+          onClose();
+          setSignatureName('');
+          setError(null);
+          try {
+            const confetti = (await import('canvas-confetti')).default;
+            confetti({
+              particleCount: 80,
+              spread: 55,
+              origin: { y: 0.6 },
+              colors: ['#D4C5B0', '#E5E2DC', '#4A453E', '#FDFCF8'],
+              ticks: 120,
+              gravity: 0.8,
+              scalar: 1.1,
+            });
+          } catch {
+            // confetti optional
+          }
+        } else {
+          setError(result.error ?? 'Something went wrong.');
         }
-      } else {
-        setError(result.error ?? 'Something went wrong.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
       }
     });
   };

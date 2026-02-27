@@ -16,6 +16,7 @@ export {
   updateGhostMember,
   addContactToGhostOrg,
   addScoutRosterToGhostOrg,
+  updateOrgMemberRole,
 } from './api/actions';
 export { updateGhostProfile } from './api/update-ghost';
 export type {

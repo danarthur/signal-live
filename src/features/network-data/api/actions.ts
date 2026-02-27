@@ -566,6 +566,10 @@ export type NodeDetail = {
   relationshipTags?: string[] | null;
   lifecycleStatus?: 'prospect' | 'active' | 'dormant' | 'blacklisted' | null;
   blacklistReason?: string | null;
+  /** For internal_employee: org_members.role (owner | admin | member | restricted). */
+  memberRole?: 'owner' | 'admin' | 'member' | 'restricted' | null;
+  /** For internal_employee: whether current user can assign admin/manager (owner or admin). */
+  canAssignElevatedRole?: boolean;
 };
 
 /**
@@ -609,6 +613,20 @@ export async function getNetworkNodeDetails(
       [member.first_name, member.last_name].filter(Boolean).join(' ') ||
       entity?.email ||
       'Unknown';
+    const role = member.role as 'owner' | 'admin' | 'member' | 'restricted' | null;
+    const { entityId } = await getCurrentEntityAndOrg(supabase);
+    let canAssignElevatedRole = false;
+    if (entityId) {
+      const { data: currentMember } = await supabase
+        .from('org_members')
+        .select('role')
+        .eq('org_id', sourceOrgId)
+        .eq('entity_id', entityId)
+        .maybeSingle();
+      const currentRole = (currentMember?.role as string) ?? null;
+      canAssignElevatedRole = currentRole === 'owner' || currentRole === 'admin';
+    }
+
     return {
       id: member.id,
       kind: 'internal_employee',
@@ -625,6 +643,8 @@ export async function getNetworkNodeDetails(
       relationshipId: null,
       isGhost: false,
       targetOrgId: null,
+      memberRole: role ?? null,
+      canAssignElevatedRole,
     };
   }
 
@@ -1071,4 +1091,65 @@ export async function addScoutRosterToGhostOrg(
     return { ok: false, addedCount: 0, error: firstError };
   }
   return { ok: true, addedCount };
+}
+
+export type UpdateOrgMemberRoleResult = { ok: true } | { ok: false; error: string };
+
+const ORG_MEMBER_ROLES = ['owner', 'admin', 'member', 'restricted'] as const;
+type OrgMemberRoleDb = (typeof ORG_MEMBER_ROLES)[number];
+
+/**
+ * Update an internal team member's role. Only owner/admin can change roles.
+ * Owner can assign any role; admin cannot assign owner. Maps manager -> member for DB.
+ */
+export async function updateOrgMemberRole(
+  orgMemberId: string,
+  sourceOrgId: string,
+  newRole: 'owner' | 'admin' | 'manager' | 'member' | 'restricted'
+): Promise<UpdateOrgMemberRoleResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Not signed in.' };
+
+  const { data: entity } = await supabase
+    .from('entities')
+    .select('id')
+    .eq('auth_id', user.id)
+    .maybeSingle();
+  if (!entity) return { ok: false, error: 'Account not linked.' };
+
+  const { data: currentMember } = await supabase
+    .from('org_members')
+    .select('role')
+    .eq('org_id', sourceOrgId)
+    .eq('entity_id', entity.id)
+    .maybeSingle();
+  const currentRole = (currentMember?.role as OrgMemberRoleDb | null) ?? null;
+  if (!currentRole || !['owner', 'admin'].includes(currentRole)) {
+    return { ok: false, error: 'Only owners and admins can change roles.' };
+  }
+  if (newRole === 'owner' && currentRole !== 'owner') {
+    return { ok: false, error: 'Only the owner can assign the owner role.' };
+  }
+
+  const dbRole: OrgMemberRoleDb = newRole === 'manager' ? 'member' : newRole;
+
+  const { data: target } = await supabase
+    .from('org_members')
+    .select('id')
+    .eq('id', orgMemberId)
+    .eq('org_id', sourceOrgId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: 'Member not found.' };
+
+  const { error } = await supabase
+    .from('org_members')
+    .update({ role: dbRole })
+    .eq('id', orgMemberId)
+    .eq('org_id', sourceOrgId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/network');
+  revalidatePath('/settings/team');
+  return { ok: true };
 }

@@ -26,11 +26,13 @@ import {
   Plus,
   Clock,
   Palette,
+  Shield,
 } from 'lucide-react';
 import { updateProfile } from '@/features/identity-hydration';
 import { ProfileAvatarUpload } from '@/features/identity-hydration/ui/ProfileAvatarUpload';
 import { QboConnectCard } from '@/features/auth/qbo-connect/ui/connect-card';
 import { TeamManagement } from './team-management';
+import { RoleBuilderShell } from '@/features/role-builder';
 import { usePreferences } from '@/shared/ui/providers/PreferencesContext';
 import { CeramicSwitch } from '@/shared/ui/switch';
 import type { WorkspaceMemberData, LocationData } from '@/app/actions/workspace';
@@ -49,6 +51,7 @@ interface SettingsData {
     name: string;
     role: 'owner' | 'admin' | 'member' | 'viewer';
     inviteCode: string | null;
+    subscriptionTier?: 'foundation' | 'growth' | 'venue_os' | 'autonomous';
   } | null;
   integrations: {
     quickbooks: boolean;
@@ -352,9 +355,34 @@ export function SettingsContent({ data, searchParams }: SettingsContentProps) {
           )}
         </motion.section>
       )}
-      
+
+      {/* Roles (owner/admin only): Role Builder — placed right after Workspace so it’s visible without scrolling past Team */}
+      {data.workspace && (data.workspace.role === 'owner' || data.workspace.role === 'admin') && (
+        <motion.section
+          id="roles"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springConfig, delay: 0.21 }}
+          className="liquid-panel p-6 space-y-6"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-ink-muted" />
+            </div>
+            <div>
+              <h2 className="text-lg font-medium text-ink">Roles</h2>
+              <p className="text-xs text-ink-muted">Custom roles and permission bundles</p>
+            </div>
+          </div>
+          <RoleBuilderShell
+            workspaceId={data.workspace.id}
+            subscriptionTier={data.workspace.subscriptionTier ?? 'foundation'}
+          />
+        </motion.section>
+      )}
+
       {/* Team Management Section */}
-      {data.workspace && data.members.length > 0 && (
+      {data.workspace && (data.workspace.role === 'owner' || data.workspace.role === 'admin') && (
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

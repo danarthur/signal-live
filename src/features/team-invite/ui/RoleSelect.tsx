@@ -52,7 +52,7 @@ export function RoleSelect({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <label className="block text-xs font-medium uppercase tracking-widest text-[var(--color-ink-muted)]">
+      <label className="block text-xs font-medium uppercase tracking-widest text-mercury/60">
         Role
       </label>
       <Select
@@ -62,24 +62,25 @@ export function RoleSelect({
       >
         <SelectTrigger
           className={cn(
-            'w-full rounded-xl border border-[var(--color-mercury)] bg-[var(--color-obsidian)]/50 px-3 py-2.5 text-[var(--color-ink)]',
-            'hover:bg-[var(--color-obsidian)]/70 focus:border-[var(--color-silk)]/50 focus:ring-2 focus:ring-[var(--color-silk)]/20',
+            'w-full rounded-xl border border-mercury/20 bg-white/5 px-3 py-2.5 text-ceramic',
+            'hover:bg-white/[0.07] focus:border-neon/30 focus:ring-2 focus:ring-neon/20',
+            'transition-colors disabled:opacity-50',
             triggerClassName
           )}
         >
           <SelectValue placeholder="Select role">
             <span className="font-medium">{displayValue}</span>
             {selectedPreset?.description && (
-              <span className="ml-2 hidden text-xs text-[var(--color-ink-muted)] sm:inline">
+              <span className="ml-2 hidden text-xs text-mercury sm:inline">
                 — {selectedPreset.description}
               </span>
             )}
           </SelectValue>
         </SelectTrigger>
         <SelectContent
-          align="end"
+          align="start"
           position="popper"
-          className="w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]"
+          className="min-w-[var(--radix-select-trigger-width)] rounded-xl border border-mercury/20 bg-obsidian/95 backdrop-blur-xl shadow-[0_8px_32px_-8px_oklch(0_0_0/0.4)] p-1"
         >
           {options.map((id) => {
             const preset = SIGNAL_ROLE_PRESETS.find((p) => p.id === id);
@@ -88,11 +89,11 @@ export function RoleSelect({
               <SelectItem
                 key={preset.id}
                 value={preset.id}
-                className="py-3 pr-8 pl-3"
+                className="py-2.5 pr-8 pl-3 text-ceramic focus:bg-neon/10 focus:text-ceramic rounded-lg"
               >
                 <div className="flex flex-col gap-0.5">
                   <span className="font-medium">{preset.label}</span>
-                  <span className="text-xs text-[var(--color-ink-muted)]">
+                  <span className="text-xs text-mercury">
                     {preset.description}
                   </span>
                 </div>

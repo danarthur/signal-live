@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useOptimistic, useState, useEffect, useRef } from 'react';
+import { useOptimistic, useState, useEffect, useRef, Suspense } from 'react';
 import { Stream } from './stream';
 import { Prism } from './prism';
 import type { StreamCardItem } from './stream-card';
@@ -140,13 +140,22 @@ export function ProductionGridShell({ gigs, selectedId, streamMode, currentOrgId
         )}
       >
         {selectedId ? (
-          <Prism
-            selectedId={selectedId}
-            selectedItem={selectedItem}
-            onBackToStream={clearSelected}
-            showBackToStream={isMobile}
-            sourceOrgId={currentOrgId ?? null}
-          />
+          <Suspense
+            fallback={
+              <div className="flex flex-col items-center justify-center flex-1 min-h-[200px] gap-3 text-ink-muted text-sm">
+                <div className="h-8 w-8 rounded-xl bg-white/5 border border-white/10 animate-pulse" aria-hidden />
+                <p>Loading…</p>
+              </div>
+            }
+          >
+            <Prism
+              selectedId={selectedId}
+              selectedItem={selectedItem}
+              onBackToStream={clearSelected}
+              showBackToStream={isMobile}
+              sourceOrgId={currentOrgId ?? null}
+            />
+          </Suspense>
         ) : (
           <div className="bento-center flex-1 p-8 text-center">
             <p className="text-ink-muted leading-relaxed text-sm max-w-sm">
