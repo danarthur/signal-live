@@ -15,7 +15,7 @@ import { ChevronLeft, LayoutGrid, HelpCircle } from 'lucide-react';
 import { useWorkspace } from '@/shared/ui/providers/WorkspaceProvider';
 import { LiquidPanel } from '@/shared/ui/liquid-panel';
 import { getPackage, updatePackage } from '@/features/sales/api/package-actions';
-import type { PackageWithTags, PackageCategory, IngredientMeta } from '@/features/sales/api/package-actions';
+import type { PackageWithTags, PackageCategory, IngredientMeta, PackageDefinition } from '@/features/sales/api/package-actions';
 import {
   getWorkspaceTags,
   createWorkspaceTag,
@@ -171,13 +171,13 @@ export default function CatalogEditPage() {
           contact_info: category === 'talent' && contactInfo.trim() ? contactInfo : null,
         };
     const definition = isBundle
-      ? (existingDef as import('@/features/sales/api/package-actions').PackageDefinition) ?? undefined
+      ? (existingDef as unknown as PackageDefinition) ?? undefined
       : ({
           layout: (existingDef as { layout?: string })?.layout,
           blocks: Array.isArray((existingDef as { blocks?: unknown })?.blocks) ? (existingDef as { blocks: unknown[] }).blocks : [],
           staffing: (existingDef as { staffing?: unknown })?.staffing ?? null,
           ingredient_meta,
-        } as import('@/features/sales/api/package-actions').PackageDefinition);
+        } as PackageDefinition);
 
     const floorPriceValue = isBundle ? null : (floorPrice.trim() ? (Number(floorPrice) || null) : null);
     const targetCostValue = isBundle ? null : (targetCost.trim() ? (Number(targetCost) || null) : null);
